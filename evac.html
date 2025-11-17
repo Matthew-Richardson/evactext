@@ -36,13 +36,14 @@
       line-height: 1.4;
     }
 
+    /* NEW: compact list style */
     .evac-zones {
       margin-top: 8px;
-      padding-left: 18px;
-    }
-
-    .evac-zones li {
       font-weight: bold;
+      white-space: normal;
+      display: flex;
+      flex-direction: column;
+      gap: 2px; /* small spacing between lines */
     }
 
     .evac-note {
@@ -114,17 +115,19 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
+    // Build compact list (no bullets)
     const zones = data.features.map(f => f.attributes.zonename);
-    const listItems = zones.map(z => `<li>${z}</li>`).join('');
+    const zoneLines = zones.join("<br>");
 
     container.innerHTML = `
       <div class="evac-title">${titleText}</div>
       <div class="evac-body">
         The following zones are within this evacuation status
         for incident: <strong>${INCIDENT}</strong>.
-        <ul class="evac-zones">
-          ${listItems}
-        </ul>
+        
+        <div class="evac-zones">
+          ${zoneLines}
+        </div>
 
         <div class="evac-note">
           Voluntary Evacuation;<br>
