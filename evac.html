@@ -16,81 +16,11 @@
       min-height: 100vh;
     }
 
-    /* Row holds two boxes */
-    .evac-row {
-      display: flex;
-      gap: 12px;
-      max-width: 900px;
-      width: 100%;
-      box-sizing: border-box;
-      padding: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    /* MOBILE: stack vertically */
-    @media (max-width: 600px) {
-      .evac-row {
-        flex-direction: column;
-      }
-    }
-
-    .evac-box {
-      padding: 16px;
-      border-radius: 8px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.3);
-      box-sizing: border-box;
-      flex: 1;
-      min-width: 280px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .evac-title {
-      font-weight: bold;
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    .evac-body {
-      font-size: 14px;
-      line-height: 1.4;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Zone chips */
-    .evac-zones {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-    }
-
-    .zone-chip,
-    .no-zones-chip {
-      font-weight: bold;
-      background: rgba(0,0,0,0.1);
-      padding: 4px 8px;
-      border-radius: 6px;
-      white-space: normal;
-      word-wrap: break-word;
-      max-width: 100%;
-    }
-
-    .evac-note {
-      margin-top: 12px;
-      font-size: 14px;
-      font-style: italic;
-      font-weight: bold;
-    }
-
     /* Legend */
     .legend {
       max-width: 900px;
       width: 100%;
-      padding: 0 8px 16px 8px;
+      padding: 8px 8px 16px 8px;
       font-size: 12px;
       text-align: center;
     }
@@ -158,14 +88,81 @@
       box-sizing: border-box;
       display: inline-block;
     }
+
+    /* Row holds SET + GO boxes */
+    .evac-row {
+      display: flex;
+      gap: 12px;
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* Mobile stacking */
+    @media (max-width: 600px) {
+      .evac-row {
+        flex-direction: column;
+      }
+    }
+
+    .evac-box {
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      box-sizing: border-box;
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .evac-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .evac-body {
+      font-size: 14px;
+      line-height: 1.4;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Zone chips */
+    .evac-zones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .zone-chip,
+    .no-zones-chip {
+      font-weight: bold;
+      background: rgba(0,0,0,0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: normal;
+      word-wrap: break-word;
+      max-width: 100%;
+    }
+
+    .evac-note {
+      margin-top: 12px;
+      font-size: 14px;
+      font-style: italic;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
 
-<div id="evacRow" class="evac-row">
-  Loading evacuation information…
-</div>
-
+<!-- ⭐ Legend moved ABOVE the boxes -->
 <div class="legend">
   <div class="legend-title">Map Key</div>
   <div class="legend-items">
@@ -188,35 +185,39 @@
   </div>
 </div>
 
+<!-- The actual SET + GO boxes -->
+<div id="evacRow" class="evac-row">
+  Loading evacuation information…
+</div>
+
 <script>
-// ------------------------------------
-// Read INCIDENT from URL
-// ------------------------------------
+// Read incident
 const params = new URLSearchParams(window.location.search);
 let INCIDENT = params.get('incident') || 'East Canyon';
 
-// Status titles
+// Titles
 const STATUS_LABELS = {
   SET: 'SET - Pre-Evacuation',
   GO:  'GO - Evacuate Now'
 };
 
-// Background colors
+// Colors
 const STATUS_COLORS = {
   SET: '#fff36a',
   GO:  '#41f56e'
 };
 
-// Custom text blocks
+// Notes
 const STATUS_TEXT = {
   SET: `Voluntary Evacuation;<br>Evacuation orders are likely`,
   GO: `<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.`
 };
 
-// Query service
+// ArcGIS query
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
+// IMPORTANT: Match your coded values: 'Set' and 'Go'
 const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
 const queryParams = new URLSearchParams({
@@ -240,11 +241,11 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    // ✅ Case-insensitive STATUS filtering (fix)
+    // Case-insensitive filtering
     const setFeatures = data.features.filter(
       f => String(f.attributes.STATUS).toUpperCase() === 'SET'
     );
-    const goFeatures  = data.features.filter(
+    const goFeatures = data.features.filter(
       f => String(f.attributes.STATUS).toUpperCase() === 'GO'
     );
 
@@ -278,7 +279,6 @@ fetch(url + '?' + queryParams.toString())
         </div>`;
     }
 
-    // SET (left) + GO (right)
     row.innerHTML =
       buildBox('SET', setFeatures) +
       buildBox('GO', goFeatures);
@@ -294,4 +294,3 @@ fetch(url + '?' + queryParams.toString())
 
 </body>
 </html>
-
