@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Evacuation Info</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: transparent;
+    }
+
+    .evac-box {
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      box-sizing: border-box;
+      max-width: 450px;
+    }
+
+    .evac-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .evac-body {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .evac-zones {
+      margin-top: 8px;
+      padding-left: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="evacContainer" class="evac-box">
+  Loading evacuation information…
+</div>
+
+<script>
+// ------------------------------------
+// Read INCIDENT and STATUS from URL
+// Example: evac.html?incident=East%20Canyon&status=SET
+// ------------------------------------
+const params = new URLSearchParams(window.location.search);
+
+// Defaults if not provided in URL
+let INCIDENT = params.get('incident') || 'East Canyon';
+let STATUS   = (params.get('status') || 'SET').toUpperCase();
+
+// Optional: nicer labels and colors per STATUS
+const STATUS_LABELS = {
+  READY: 'READY - Be Alert',
+  SET:   'SET - Pre-Evacuation',
+  GO:    'GO - Evacuate Now'
+};
+
+const STATUS_COLORS = {
+  READY: '#c6f6d5', // light green
+  SET:   '#fff36a', // yellow
+  GO:    '#fed7d7'  // light red
+};
+
+const titleText = STATUS_LABELS[STATUS] || STATUS;
+const bgColor   = STATUS_COLORS[STATUS] || '#fff36a';
+
+// Apply background color
+document.getElementById('evacContainer').style.backgroundColor = bgColor;
+
+// ------------------------------------
+// Query the feature service
+// ------------------------------------
+const url = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+
+const where = `incident='${INCIDENT}' AND STATUS='${STATUS}'`;
+
+const queryParams = new URLSearchParams({
+  where: where,
+  outFields: '*',
+  f: 'json',
+  returnGeometry: 'false'
+});
+
+fetch(url + '?' + queryParams.toString())
+  .then(r => r.json())
+  .then(data => {
+    const container = document.getElementById('evacContainer');
+
+    if (!data.features || data.features.length === 0) {
+      container.innerHTML =
+        `<div class="evac-title">${titleText}</div>
+         <div class="evac-body">
+           No zones found for incident <strong>${INCIDENT}</strong>
+           with STATUS <strong>${STATUS}</strong>.
+         </div>`;
+      return;
+    }
+
+    const zones = data.features.map(f => f.attributes.zonename);
+    const listItems = zones.map(z => `<li>${z}</li>`).join('');
+
+    container.innerHTML = `
+      <div class="evac-title">${titleText}</div>
+      <div class="evac-body">
+        The following zones are within this evacuation status
+        for incident: <strong>${INCIDENT}</strong>.
+        <ul class="evac-zones">
+          ${listItems}
+        </ul>
+      </div>
+    `;
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById('evacContainer').innerHTML =
+      `<div class="evac-title">Error</div>
+       <div class="evac-body">Error fetching data: ${err}</div>`;
+  });
+</script>
+
+</body>
+</html>
