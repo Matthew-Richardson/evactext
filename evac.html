@@ -16,7 +16,7 @@
       min-height: 100vh;
     }
 
-    /* Row with two boxes */
+    /* Row holds two boxes */
     .evac-row {
       display: flex;
       gap: 12px;
@@ -26,6 +26,13 @@
       padding: 8px;
       flex-wrap: wrap;
       justify-content: center;
+    }
+
+    /* MOBILE FIX — stack vertically */
+    @media (max-width: 600px) {
+      .evac-row {
+        flex-direction: column;
+      }
     }
 
     .evac-box {
@@ -79,11 +86,11 @@
       font-weight: bold;
     }
 
-    /* Legend / key */
+    /* Legend */
     .legend {
       max-width: 900px;
       width: 100%;
-      padding: 0 8px 8px 8px;
+      padding: 0 8px 16px 8px;
       font-size: 12px;
       text-align: center;
     }
@@ -107,7 +114,7 @@
       white-space: nowrap;
     }
 
-    /* MUTCD-style Road Closure Icon */
+    /* ROAD CLOSURE — red circle w/ black bar */
     .legend-icon-road {
       position: relative;
       width: 18px;
@@ -127,25 +134,29 @@
       transform: translateY(-50%);
     }
 
-    /* Info icon */
+    /* INFO — blue circle */
     .legend-icon-info {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
       background: #0078d4;
-      color: #fff;
+      color: white;
       font-weight: bold;
-      width: 16px;
-      height:16px;
-      display: flex;
-      justify-content:center;
-      align-items:center;
-      border-radius: 4px;
       font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    /* Special warning triangle */
+    /* WARNING — yellow diamond */
     .legend-icon-warning {
-      color: #c05621;
-      font-size: 16px;
-      line-height: 1;
+      width: 16px;
+      height: 16px;
+      background: #f6e05e;
+      transform: rotate(45deg);
+      border: 1px solid #c7b100;
+      box-sizing: border-box;
+      display: inline-block;
     }
   </style>
 </head>
@@ -155,7 +166,6 @@
   Loading evacuation information…
 </div>
 
-<!-- Centered legend -->
 <div class="legend">
   <div class="legend-title">Map Key</div>
   <div class="legend-items">
@@ -171,7 +181,7 @@
     </div>
 
     <div class="legend-item">
-      <span class="legend-icon-warning">▲</span>
+      <span class="legend-icon-warning"></span>
       <span>Special warning</span>
     </div>
 
@@ -199,26 +209,18 @@ const STATUS_COLORS = {
 
 // Custom text blocks
 const STATUS_TEXT = {
-  SET: `
-    Voluntary Evacuation;<br>
-    Evacuation orders are likely
-  `,
-  GO: `
-    <strong>LEAVE NOW.</strong> Immediate threat to life.<br>
-    This area is closed to public access.
-  `
+  SET: `Voluntary Evacuation;<br>Evacuation orders are likely`,
+  GO: `<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.`
 };
 
-// ------------------------------------
-// Query the feature service for SET+GO
-// ------------------------------------
+// Query service
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
 const where = `incident='${INCIDENT}' AND STATUS IN ('SET','GO')`;
 
 const queryParams = new URLSearchParams({
-  where: where,
+  where,
   outFields: '*',
   f: 'json',
   returnGeometry: 'false'
@@ -230,71 +232,51 @@ fetch(url + '?' + queryParams.toString())
     const row = document.getElementById('evacRow');
 
     if (!data.features || data.features.length === 0) {
-      row.innerHTML =
-        `<div class="evac-box" style="background:#fff36a;">
-           <div class="evac-title">No data</div>
-           <div class="evac-body">
-             No zones found for incident <strong>${INCIDENT}</strong>.
-           </div>
-         </div>`;
+      row.innerHTML = `
+        <div class="evac-box" style="background:#fff36a;">
+          <div class="evac-title">No data</div>
+          <div class="evac-body">No zones found for <strong>${INCIDENT}</strong>.</div>
+        </div>`;
       return;
     }
 
-    // Split SET vs GO
-    const setFeatures = data.features.filter(
-      f => String(f.attributes.STATUS).toUpperCase() === 'SET'
-    );
-    const goFeatures  = data.features.filter(
-      f => String(f.attributes.STATUS).toUpperCase() === 'GO'
-    );
+    const setFeatures = data.features.filter(f => f.attributes.STATUS === 'SET');
+    const goFeatures  = data.features.filter(f => f.attributes.STATUS === 'GO');
 
-    // Build a box (SET or GO)
     function buildBox(statusCode, features) {
-      const label     = STATUS_LABELS[statusCode];
-      const bg        = STATUS_COLORS[statusCode];
-      const note      = STATUS_TEXT[statusCode];
+      const label = STATUS_LABELS[statusCode];
+      const bg = STATUS_COLORS[statusCode];
+      const note = STATUS_TEXT[statusCode];
 
-      let innerZones;
+      let zonesHTML;
 
-      if (!features || features.length === 0) {
-        innerZones =
-          `<div class="evac-zones">
-             <div class="no-zones-chip">No ${statusCode} zones</div>
-           </div>`;
+      if (features.length === 0) {
+        zonesHTML = `<div class="evac-zones"><div class="no-zones-chip">No ${statusCode} zones</div></div>`;
       } else {
-        const zones = features.map(f => f.attributes.zonename);
-        const chips = zones
-          .map(z => `<div class="zone-chip">${z}</div>`)
-          .join('');
-        innerZones = `<div class="evac-zones">${chips}</div>`;
+        const chips = features.map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`).join('');
+        zonesHTML = `<div class="evac-zones">${chips}</div>`;
       }
 
       return `
         <div class="evac-box" style="background:${bg};">
           <div class="evac-title">${label}</div>
           <div class="evac-body">
-            <div>
-              The following zones are under ${statusCode} status
-              for incident: <strong>${INCIDENT}</strong>.
-            </div>
-            ${innerZones}
+            <div>The following zones are under ${statusCode} status for <strong>${INCIDENT}</strong>.</div>
+            ${zonesHTML}
             <div class="evac-note">${note}</div>
           </div>
-        </div>
-      `;
+        </div>`;
     }
 
-    // Render SET (left) + GO (right)
     row.innerHTML =
       buildBox('SET', setFeatures) +
-      buildBox('GO',  goFeatures);
+      buildBox('GO', goFeatures);
   })
   .catch(err => {
-    console.error(err);
     document.getElementById('evacRow').innerHTML =
       `<div class="evac-box" style="background:#fff36a;">
          <div class="evac-title">Error</div>
-         <div class="evac-body">Error fetching data: ${err}</div>
+         <div class="evac-body">${err}</div>
        </div>`;
   });
 </script>
