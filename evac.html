@@ -11,8 +11,8 @@
       font-family: Arial, sans-serif;
       background: transparent;
       display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      flex-direction: column;  /* stack row + legend */
+      align-items: center;
       min-height: 100vh;
     }
 
@@ -47,7 +47,7 @@
     .evac-body {
       font-size: 14px;
       line-height: 1.4;
-      flex: 1;              
+      flex: 1;
       display: flex;
       flex-direction: column;
     }
@@ -70,7 +70,7 @@
       max-width: 100%;
     }
 
-    /* Special style for the "no zones" message */
+    /* "No zones" message */
     .no-zones-chip {
       font-weight: bold;
       background: rgba(0,0,0,0.1);
@@ -87,12 +87,84 @@
       font-style: italic;
       font-weight: bold;
     }
+
+    /* Legend / key */
+    .legend {
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 8px 8px 8px;
+      font-size: 12px;
+    }
+
+    .legend-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .legend-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      box-sizing: border-box;
+    }
+
+    .legend-icon-road {
+      background: #444;
+      color: #fff;
+    }
+
+    .legend-icon-info {
+      background: #0078d4;
+      color: #fff;
+    }
+
+    .legend-icon-warning {
+      background: #f6ad55;
+      color: #000;
+    }
   </style>
 </head>
 <body>
 
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
+</div>
+
+<div class="legend">
+  <div class="legend-title">Map Key</div>
+  <div class="legend-items">
+    <div class="legend-item">
+      <span class="legend-icon legend-icon-road">X</span>
+      <span>Road closure</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-icon legend-icon-info">i</span>
+      <span>Information</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-icon legend-icon-warning">▲</span>
+      <span>Special warning</span>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -174,7 +246,6 @@ fetch(url + '?' + queryParams.toString())
       let innerZones;
 
       if (!features || features.length === 0) {
-        // SHORT “no zones” label
         innerZones =
           `<div class="evac-zones">
              <div class="no-zones-chip">No ${statusCode} zones</div>
