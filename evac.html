@@ -24,6 +24,7 @@
       width: 100%;
       box-sizing: border-box;
       padding: 8px;
+      flex-wrap: wrap; /* NEW: lets boxes stack on very small screens */
     }
 
     .evac-box {
@@ -31,7 +32,7 @@
       border-radius: 8px;
       box-shadow: 0 0 4px rgba(0,0,0,0.3);
       box-sizing: border-box;
-      flex: 1;               /* makes both boxes equal width */
+      flex: 1;               /* makes both boxes equal width in a row */
       min-width: 0;          /* flexbox overflow fix */
       display: flex;
       flex-direction: column;
@@ -64,7 +65,21 @@
       background: rgba(0,0,0,0.1);
       padding: 4px 8px;
       border-radius: 6px;
-      white-space: nowrap;
+      /* CHANGED: allow wrapping so text doesn't spill on small screens */
+      white-space: normal;
+      word-wrap: break-word;
+      max-width: 100%;
+    }
+
+    /* Special style for the "no zones" message */
+    .no-zones-chip {
+      font-weight: bold;
+      background: rgba(0,0,0,0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: normal;
+      word-wrap: break-word;
+      max-width: 100%;
     }
 
     .evac-note {
@@ -162,9 +177,10 @@ fetch(url + '?' + queryParams.toString())
 
       let innerZones;
       if (!features || features.length === 0) {
+        // Use special wrapped chip for "no zones" so it won't overflow
         innerZones =
           `<div class="evac-zones">
-             <div class="zone-chip">No zones under ${statusCode} status</div>
+             <div class="no-zones-chip">No zones under ${statusCode} status</div>
            </div>`;
       } else {
         const zones = features.map(f => f.attributes.zonename);
