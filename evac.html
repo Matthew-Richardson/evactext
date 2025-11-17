@@ -10,10 +10,10 @@
       padding: 0;
       font-family: Arial, sans-serif;
       background: transparent;
-      display: flex;             /* NEW: center box */
-      justify-content: center;   /* NEW */
-      align-items: flex-start;   /* keeps box at top */
-      min-height: 100vh;         /* ensure vertical space exists */
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
     }
 
     .evac-box {
@@ -22,7 +22,7 @@
       box-shadow: 0 0 4px rgba(0,0,0,0.3);
       box-sizing: border-box;
       max-width: 450px;
-      width: 100%;               /* keeps it responsive */
+      width: 100%;
     }
 
     .evac-title {
@@ -42,7 +42,14 @@
     }
 
     .evac-zones li {
-      font-weight: bold;         /* NEW: make zone names bold */
+      font-weight: bold;
+    }
+
+    .evac-note {
+      margin-top: 12px;
+      font-size: 14px;
+      font-style: italic;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -118,6 +125,11 @@ fetch(url + '?' + queryParams.toString())
         <ul class="evac-zones">
           ${listItems}
         </ul>
+
+        <div class="evac-note">
+          Voluntary Evacuation;<br>
+          Evacuation orders are likely
+        </div>
       </div>
     `;
   })
