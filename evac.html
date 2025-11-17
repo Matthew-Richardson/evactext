@@ -36,14 +36,20 @@
       line-height: 1.4;
     }
 
-    /* NEW: compact list style */
+    /* NEW: Zone chips */
     .evac-zones {
-      margin-top: 8px;
-      font-weight: bold;
-      white-space: normal;
       display: flex;
-      flex-direction: column;
-      gap: 2px; /* small spacing between lines */
+      flex-wrap: wrap;      /* allows wrapping if needed */
+      gap: 6px;             /* spacing between chips */
+      margin-top: 10px;
+    }
+
+    .zone-chip {
+      font-weight: bold;
+      background: rgba(0,0,0,0.1);
+      padding: 4px 8px;
+      border-radius: 6px;
+      white-space: nowrap;   /* keeps each chip on one line */
     }
 
     .evac-note {
@@ -115,9 +121,12 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    // Build compact list (no bullets)
     const zones = data.features.map(f => f.attributes.zonename);
-    const zoneLines = zones.join("<br>");
+
+    // Build chip elements
+    const zoneChips = zones
+      .map(z => `<div class="zone-chip">${z}</div>`)
+      .join('');
 
     container.innerHTML = `
       <div class="evac-title">${titleText}</div>
@@ -126,7 +135,7 @@ fetch(url + '?' + queryParams.toString())
         for incident: <strong>${INCIDENT}</strong>.
         
         <div class="evac-zones">
-          ${zoneLines}
+          ${zoneChips}
         </div>
 
         <div class="evac-note">
