@@ -23,6 +23,9 @@
       box-sizing: border-box;
       max-width: 450px;
       width: 100%;
+
+      /* NEW: make both boxes match in height */
+      min-height: 240px;
     }
 
     .evac-title {
@@ -36,7 +39,7 @@
       line-height: 1.4;
     }
 
-    /* Zone chips in one row (wrap if needed) */
+    /* Zone chips */
     .evac-zones {
       display: flex;
       flex-wrap: wrap;
@@ -69,7 +72,6 @@
 <script>
 // ------------------------------------
 // Read INCIDENT and STATUS from URL
-// Example: evac.html?incident=East%20Canyon&status=GO
 // ------------------------------------
 const params = new URLSearchParams(window.location.search);
 
@@ -87,7 +89,7 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
   READY: '#c6f6d5',
   SET:   '#fff36a',
-  GO:    '#41f56e'  // Matches your screenshot style
+  GO:    '#41f56e'
 };
 
 // Custom text blocks
@@ -140,11 +142,8 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    // Build zone chips
     const zones = data.features.map(f => f.attributes.zonename);
-    const zoneChips = zones
-      .map(z => `<div class="zone-chip">${z}</div>`)
-      .join('');
+    const zoneChips = zones.map(z => `<div class="zone-chip">${z}</div>`).join('');
 
     container.innerHTML = `
       <div class="evac-title">${titleText}</div>
