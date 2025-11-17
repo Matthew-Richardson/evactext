@@ -16,17 +16,25 @@
       min-height: 100vh;
     }
 
+    /* Outer row holding both boxes */
+    .evac-row {
+      display: flex;
+      gap: 12px;
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px;
+    }
+
     .evac-box {
       padding: 16px;
       border-radius: 8px;
       box-shadow: 0 0 4px rgba(0,0,0,0.3);
       box-sizing: border-box;
-      max-width: 450px;
-      width: 100%;
-
-      /* REMOVED FIXED HEIGHT — box now auto-sizes */
-      /* height: 175px; */
-      /* overflow-y: auto; */
+      flex: 1;               /* makes both boxes equal width */
+      min-width: 0;          /* flexbox overflow fix */
+      display: flex;
+      flex-direction: column;
     }
 
     .evac-title {
@@ -38,6 +46,9 @@
     .evac-body {
       font-size: 14px;
       line-height: 1.4;
+      flex: 1;              /* stretch body to help equal heights */
+      display: flex;
+      flex-direction: column;
     }
 
     /* Zone chips */
@@ -66,38 +77,33 @@
 </head>
 <body>
 
-<div id="evacContainer" class="evac-box">
+<div id="evacRow" class="evac-row">
+  <!-- Boxes will be injected here -->
   Loading evacuation information…
 </div>
 
 <script>
 // ------------------------------------
-// Read INCIDENT and STATUS from URL
+// Read INCIDENT from URL
+// Example: evac.html?incident=East%20Canyon
 // ------------------------------------
 const params = new URLSearchParams(window.location.search);
-
 let INCIDENT = params.get('incident') || 'East Canyon';
-let STATUS   = (params.get('status') || 'SET').toUpperCase();
 
 // Status titles
 const STATUS_LABELS = {
-  READY: 'READY - Be Alert',
-  SET:   'SET - Pre-Evacuation',
-  GO:    'GO - Evacuate Now'
+  SET: 'SET - Pre-Evacuation',
+  GO:  'GO - Evacuate Now'
 };
 
 // Background colors
 const STATUS_COLORS = {
-  READY: '#c6f6d5',
-  SET:   '#fff36a',
-  GO:    '#41f56e'
+  SET: '#fff36a',
+  GO:  '#41f56e'
 };
 
 // Custom text blocks
 const STATUS_TEXT = {
-  READY: `
-    Stay informed. No immediate action is required.
-  `,
   SET: `
     Voluntary Evacuation;<br>
     Evacuation orders are likely
@@ -108,18 +114,14 @@ const STATUS_TEXT = {
   `
 };
 
-const titleText  = STATUS_LABELS[STATUS] || STATUS;
-const bgColor    = STATUS_COLORS[STATUS] || '#fff36a';
-const customText = STATUS_TEXT[STATUS] || '';
-
-document.getElementById('evacContainer').style.backgroundColor = bgColor;
-
 // ------------------------------------
-// Query the feature service
+// Query the feature service ONCE
+// for this incident and both statuses
 // ------------------------------------
-const url = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+const url =
+  'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
-const where = `incident='${INCIDENT}' AND STATUS='${STATUS}'`;
+const where = `incident='${INCIDENT}' AND STATUS IN ('SET','GO')`;
 
 const queryParams = new URLSearchParams({
   where: where,
@@ -131,42 +133,76 @@ const queryParams = new URLSearchParams({
 fetch(url + '?' + queryParams.toString())
   .then(r => r.json())
   .then(data => {
-    const container = document.getElementById('evacContainer');
+    const row = document.getElementById('evacRow');
 
     if (!data.features || data.features.length === 0) {
-      container.innerHTML =
-        `<div class="evac-title">${titleText}</div>
-         <div class="evac-body">
-           No zones found for incident <strong>${INCIDENT}</strong>
-           with STATUS <strong>${STATUS}</strong>.
+      row.innerHTML =
+        `<div class="evac-box" style="background:#fff36a;">
+           <div class="evac-title">No data</div>
+           <div class="evac-body">
+             No zones found for incident <strong>${INCIDENT}</strong>.
+           </div>
          </div>`;
       return;
     }
 
-    const zones = data.features.map(f => f.attributes.zonename);
-    const zoneChips = zones.map(z => `<div class="zone-chip">${z}</div>`).join('');
+    // Split features into SET and GO
+    const setFeatures = data.features.filter(
+      f => String(f.attributes.STATUS).toUpperCase() === 'SET'
+    );
+    const goFeatures  = data.features.filter(
+      f => String(f.attributes.STATUS).toUpperCase() === 'GO'
+    );
 
-    container.innerHTML = `
-      <div class="evac-title">${titleText}</div>
-      <div class="evac-body">
-        The following zones are under evacuation for incident:
-        <strong>${INCIDENT}</strong>.
-        
-        <div class="evac-zones">
-          ${zoneChips}
-        </div>
+    // Helper to build one box's HTML
+    function buildBox(statusCode, features) {
+      const label     = STATUS_LABELS[statusCode];
+      const bg        = STATUS_COLORS[statusCode];
+      const note      = STATUS_TEXT[statusCode];
 
-        <div class="evac-note">
-          ${customText}
+      let innerZones;
+      if (!features || features.length === 0) {
+        innerZones =
+          `<div class="evac-zones">
+             <div class="zone-chip">No zones under ${statusCode} status</div>
+           </div>`;
+      } else {
+        const zones = features.map(f => f.attributes.zonename);
+        const chips = zones
+          .map(z => `<div class="zone-chip">${z}</div>`)
+          .join('');
+        innerZones = `<div class="evac-zones">${chips}</div>`;
+      }
+
+      return `
+        <div class="evac-box" style="background:${bg};">
+          <div class="evac-title">${label}</div>
+          <div class="evac-body">
+            <div>
+              The following zones are under ${statusCode} status
+              for incident: <strong>${INCIDENT}</strong>.
+            </div>
+            ${innerZones}
+            <div class="evac-note">
+              ${note}
+            </div>
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    }
+
+    // Always render SET on left, GO on right
+    row.innerHTML =
+      buildBox('SET', setFeatures) +
+      buildBox('GO',  goFeatures);
   })
   .catch(err => {
     console.error(err);
-    document.getElementById('evacContainer').innerHTML =
-      `<div class="evac-title">Error</div>
-       <div class="evac-body">Error fetching data: ${err}</div>`;
+    document.getElementById('evacRow').innerHTML =
+      `<div class="evac-box" style="background:#fff36a;">
+         <div class="evac-title">Error</div>
+         <div class="evac-body">Error fetching data: ${err}</div>
+       </div>`;
   });
 </script>
 
