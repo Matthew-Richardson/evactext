@@ -28,7 +28,7 @@
       justify-content: center;
     }
 
-    /* MOBILE FIX — stack vertically */
+    /* MOBILE: stack vertically */
     @media (max-width: 600px) {
       .evac-row {
         flex-direction: column;
@@ -240,8 +240,13 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    const setFeatures = data.features.filter(f => f.attributes.STATUS === 'SET');
-    const goFeatures  = data.features.filter(f => f.attributes.STATUS === 'GO');
+    // ✅ Case-insensitive STATUS filtering (fix)
+    const setFeatures = data.features.filter(
+      f => String(f.attributes.STATUS).toUpperCase() === 'SET'
+    );
+    const goFeatures  = data.features.filter(
+      f => String(f.attributes.STATUS).toUpperCase() === 'GO'
+    );
 
     function buildBox(statusCode, features) {
       const label = STATUS_LABELS[statusCode];
@@ -250,10 +255,15 @@ fetch(url + '?' + queryParams.toString())
 
       let zonesHTML;
 
-      if (features.length === 0) {
-        zonesHTML = `<div class="evac-zones"><div class="no-zones-chip">No ${statusCode} zones</div></div>`;
+      if (!features || features.length === 0) {
+        zonesHTML = `
+          <div class="evac-zones">
+            <div class="no-zones-chip">No ${statusCode} zones</div>
+          </div>`;
       } else {
-        const chips = features.map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`).join('');
+        const chips = features
+          .map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`)
+          .join('');
         zonesHTML = `<div class="evac-zones">${chips}</div>`;
       }
 
@@ -268,6 +278,7 @@ fetch(url + '?' + queryParams.toString())
         </div>`;
     }
 
+    // SET (left) + GO (right)
     row.innerHTML =
       buildBox('SET', setFeatures) +
       buildBox('GO', goFeatures);
