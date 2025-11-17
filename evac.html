@@ -47,7 +47,7 @@
     .evac-body {
       font-size: 14px;
       line-height: 1.4;
-      flex: 1;              /* helps equal heights */
+      flex: 1;              
       display: flex;
       flex-direction: column;
     }
@@ -65,7 +65,7 @@
       background: rgba(0,0,0,0.1);
       padding: 4px 8px;
       border-radius: 6px;
-      white-space: normal;      /* allow wrap */
+      white-space: normal;
       word-wrap: break-word;
       max-width: 100%;
     }
@@ -92,14 +92,12 @@
 <body>
 
 <div id="evacRow" class="evac-row">
-  <!-- Boxes will be injected here -->
   Loading evacuation information…
 </div>
 
 <script>
 // ------------------------------------
 // Read INCIDENT from URL
-// Example: evac.html?incident=East%20Canyon
 // ------------------------------------
 const params = new URLSearchParams(window.location.search);
 let INCIDENT = params.get('incident') || 'East Canyon';
@@ -129,8 +127,7 @@ const STATUS_TEXT = {
 };
 
 // ------------------------------------
-// Query the feature service ONCE
-// for this incident and both statuses
+// Query the feature service for SET+GO
 // ------------------------------------
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
@@ -160,7 +157,7 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    // Split features into SET and GO
+    // Split SET vs GO
     const setFeatures = data.features.filter(
       f => String(f.attributes.STATUS).toUpperCase() === 'SET'
     );
@@ -168,18 +165,19 @@ fetch(url + '?' + queryParams.toString())
       f => String(f.attributes.STATUS).toUpperCase() === 'GO'
     );
 
-    // Helper to build one box's HTML
+    // Build a box (SET or GO)
     function buildBox(statusCode, features) {
       const label     = STATUS_LABELS[statusCode];
       const bg        = STATUS_COLORS[statusCode];
       const note      = STATUS_TEXT[statusCode];
 
       let innerZones;
+
       if (!features || features.length === 0) {
-        // Shortened message so it fits everywhere
+        // SHORT “no zones” label
         innerZones =
           `<div class="evac-zones">
-             <div class="no-zones-chip">No zones under ${statusCode}</div>
+             <div class="no-zones-chip">No ${statusCode} zones</div>
            </div>`;
       } else {
         const zones = features.map(f => f.attributes.zonename);
@@ -198,15 +196,13 @@ fetch(url + '?' + queryParams.toString())
               for incident: <strong>${INCIDENT}</strong>.
             </div>
             ${innerZones}
-            <div class="evac-note">
-              ${note}
-            </div>
+            <div class="evac-note">${note}</div>
           </div>
         </div>
       `;
     }
 
-    // Always render SET on left, GO on right
+    // Render SET (left) + GO (right)
     row.innerHTML =
       buildBox('SET', setFeatures) +
       buildBox('GO',  goFeatures);
