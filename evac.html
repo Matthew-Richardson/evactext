@@ -24,7 +24,7 @@
       width: 100%;
       box-sizing: border-box;
       padding: 8px;
-      flex-wrap: wrap; /* NEW: lets boxes stack on very small screens */
+      flex-wrap: wrap; /* allows stacking on very small screens */
     }
 
     .evac-box {
@@ -32,7 +32,7 @@
       border-radius: 8px;
       box-shadow: 0 0 4px rgba(0,0,0,0.3);
       box-sizing: border-box;
-      flex: 1;               /* makes both boxes equal width in a row */
+      flex: 1;               /* equal width side by side */
       min-width: 0;          /* flexbox overflow fix */
       display: flex;
       flex-direction: column;
@@ -47,7 +47,7 @@
     .evac-body {
       font-size: 14px;
       line-height: 1.4;
-      flex: 1;              /* stretch body to help equal heights */
+      flex: 1;              /* helps equal heights */
       display: flex;
       flex-direction: column;
     }
@@ -65,8 +65,7 @@
       background: rgba(0,0,0,0.1);
       padding: 4px 8px;
       border-radius: 6px;
-      /* CHANGED: allow wrapping so text doesn't spill on small screens */
-      white-space: normal;
+      white-space: normal;      /* allow wrap */
       word-wrap: break-word;
       max-width: 100%;
     }
@@ -177,10 +176,10 @@ fetch(url + '?' + queryParams.toString())
 
       let innerZones;
       if (!features || features.length === 0) {
-        // Use special wrapped chip for "no zones" so it won't overflow
+        // Shortened message so it fits everywhere
         innerZones =
           `<div class="evac-zones">
-             <div class="no-zones-chip">No zones under ${statusCode} status</div>
+             <div class="no-zones-chip">No zones under ${statusCode}</div>
            </div>`;
       } else {
         const zones = features.map(f => f.attributes.zonename);
