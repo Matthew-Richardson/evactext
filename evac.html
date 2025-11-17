@@ -16,79 +16,6 @@
       min-height: 100vh;
     }
 
-    /* Legend */
-    .legend {
-      max-width: 900px;
-      width: 100%;
-      padding: 8px 8px 16px 8px;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .legend-title {
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
-
-    .legend-items {
-      display: inline-flex;
-      gap: 18px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-    }
-
-    /* ROAD CLOSURE — red circle w/ black bar */
-    .legend-icon-road {
-      position: relative;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #d60000;
-      display: inline-block;
-    }
-    .legend-icon-road::after {
-      content: "";
-      position: absolute;
-      top: 50%;
-      left: 0;
-      width: 100%;
-      height: 4px;
-      background: black;
-      transform: translateY(-50%);
-    }
-
-    /* INFO — blue circle */
-    .legend-icon-info {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #0078d4;
-      color: white;
-      font-weight: bold;
-      font-size: 12px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* WARNING — yellow diamond */
-    .legend-icon-warning {
-      width: 16px;
-      height: 16px;
-      background: #f6e05e;
-      transform: rotate(45deg);
-      border: 1px solid #c7b100;
-      box-sizing: border-box;
-      display: inline-block;
-    }
-
     /* Row holds SET + GO boxes */
     .evac-row {
       display: flex;
@@ -158,34 +85,12 @@
       font-style: italic;
       font-weight: bold;
     }
+
   </style>
 </head>
 <body>
 
-<!-- ⭐ Legend moved ABOVE the boxes -->
-<div class="legend">
-  <div class="legend-title">Map Key</div>
-  <div class="legend-items">
-
-    <div class="legend-item">
-      <span class="legend-icon-road"></span>
-      <span>Road closure</span>
-    </div>
-
-    <div class="legend-item">
-      <span class="legend-icon-info">i</span>
-      <span>Information</span>
-    </div>
-
-    <div class="legend-item">
-      <span class="legend-icon-warning"></span>
-      <span>Special warning</span>
-    </div>
-
-  </div>
-</div>
-
-<!-- The actual SET + GO boxes -->
+<!-- SET + GO boxes -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
 </div>
@@ -213,11 +118,11 @@ const STATUS_TEXT = {
   GO: `<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.`
 };
 
-// ArcGIS query
+// Query service
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
-// IMPORTANT: Match your coded values: 'Set' and 'Go'
+// IMPORTANT: Match coded domain values
 const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
 const queryParams = new URLSearchParams({
@@ -241,7 +146,7 @@ fetch(url + '?' + queryParams.toString())
       return;
     }
 
-    // Case-insensitive filtering
+    // Case-insensitive filter
     const setFeatures = data.features.filter(
       f => String(f.attributes.STATUS).toUpperCase() === 'SET'
     );
