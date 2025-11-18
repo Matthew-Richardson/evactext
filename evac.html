@@ -13,7 +13,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
+      /* was min-height: 100vh; – removed so it fits the iframe better */
     }
 
     /* Row holds SET + GO boxes */
@@ -28,10 +28,13 @@
       justify-content: center;
     }
 
-    /* Mobile stacking */
+    /* Mobile stacking + tighter layout */
     @media (max-width: 600px) {
       .evac-row {
         flex-direction: column;
+        max-width: 100%;
+        padding: 6px;
+        gap: 8px;
       }
     }
 
@@ -44,6 +47,13 @@
       min-width: 280px;
       display: flex;
       flex-direction: column;
+    }
+
+    @media (max-width: 600px) {
+      .evac-box {
+        padding: 10px;
+        min-width: 0; /* let it shrink on narrow screens */
+      }
     }
 
     .evac-title {
@@ -60,12 +70,29 @@
       flex-direction: column;
     }
 
+    @media (max-width: 600px) {
+      .evac-title {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
+      .evac-body {
+        font-size: 13px;
+      }
+    }
+
     /* Zone chips */
     .evac-zones {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .evac-zones {
+        gap: 4px;
+        margin-top: 6px;
+      }
     }
 
     .zone-chip,
@@ -79,6 +106,14 @@
       max-width: 100%;
     }
 
+    @media (max-width: 600px) {
+      .zone-chip,
+      .no-zones-chip {
+        padding: 3px 6px;
+        font-size: 12px;
+      }
+    }
+
     .evac-note {
       margin-top: 12px;
       font-size: 14px;
@@ -86,11 +121,16 @@
       font-weight: bold;
     }
 
+    @media (max-width: 600px) {
+      .evac-note {
+        margin-top: 8px;
+        font-size: 13px;
+      }
+    }
   </style>
 </head>
 <body>
 
-<!-- SET + GO boxes -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
 </div>
@@ -122,7 +162,7 @@ const STATUS_TEXT = {
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
-// IMPORTANT: Match coded domain values
+// Match coded domain values
 const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
 const queryParams = new URLSearchParams({
