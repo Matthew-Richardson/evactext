@@ -193,6 +193,14 @@
         font-size: 13px;
       }
     }
+
+    /* NEW: container for the incident status / evac info panel from Sheets */
+    .incident-panel {
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 8px 12px 8px;
+    }
   </style>
 </head>
 <body>
@@ -215,13 +223,20 @@
   </div>
 </div>
 
+<!-- SET / GO ZONE BOXES -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
 </div>
 
+<!-- NEW: INCIDENT STATUS / EVAC INFO PANEL FROM GOOGLE SHEET -->
+<div class="incident-panel">
+  <div id="incident-panel">Loading incident status…</div>
+</div>
+
 <script>
   const params = new URLSearchParams(window.location.search);
-  const INCIDENT = params.get('incident') || 'East Canyon';
+  // using var so it’s visible to the second script if needed
+  var INCIDENT = params.get('incident') || 'East Canyon';
 
   const STATUS_LABELS = {
     SET: 'SET - Pre-Evacuation',
@@ -264,7 +279,6 @@
         return;
       }
 
-      // Trust STATUS = 'Set' / 'Go'
       const setFeatures = data.features.filter(
         f => f.attributes.STATUS === 'Set'
       );
@@ -315,6 +329,44 @@
           <div class="evac-body">${err}</div>
         </div>`;
     });
+</script>
+
+<!-- NEW SCRIPT: LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS -->
+<script>
+  const STATUS_BASE_URL = "https://script.google.com/macros/s/AKfycbwBajWa6n1_7YQLVOFZKjUvxs6Z2oU-cI1KBmR4JqGFvTcnM58ZPmkkE55ioGCDv6Js1Q/exec";
+
+  function loadIncidentStatus(incidentName) {
+    if (!incidentName) {
+      document.getElementById("incident-panel").innerHTML =
+        "<div>No incident specified.</div>";
+      return;
+    }
+
+    const url = STATUS_BASE_URL + "?incident=" + encodeURIComponent(incidentName);
+
+    fetch(url)
+      .then(r => r.text())
+      .then(html => {
+        // html is exactly the card you saw earlier
+        document.getElementById("incident-panel").innerHTML = html;
+      })
+      .catch(err => {
+        console.error("Error loading incident status:", err);
+        document.getElementById("incident-panel").innerHTML =
+          "<div>Error loading incident status.</div>";
+      });
+  }
+
+  // Use the same INCIDENT name as the zone query
+  const incidentForPanel =
+    (typeof INCIDENT !== "undefined" && INCIDENT) ||
+    new URLSearchParams(window.location.search).get("incident") ||
+    "East Canyon";
+
+  loadIncidentStatus(incidentForPanel);
+
+  // Optional: expose for other widgets / future use
+  window.setEvacIncidentStatus = loadIncidentStatus;
 </script>
 
 </body>
