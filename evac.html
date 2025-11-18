@@ -15,7 +15,6 @@
       align-items: center;
     }
 
-    /* -------- KEY / LEGEND -------- */
     .legend {
       max-width: 900px;
       width: 100%;
@@ -23,19 +22,16 @@
       font-size: 12px;
       text-align: center;
     }
-
     .legend-title {
       font-weight: bold;
       margin-bottom: 4px;
     }
-
     .legend-items {
       display: inline-flex;
       gap: 18px;
       flex-wrap: wrap;
       justify-content: center;
     }
-
     .legend-item {
       display: flex;
       align-items: center;
@@ -88,7 +84,6 @@
       display: inline-block;
     }
 
-    /* -------- BOX LAYOUT -------- */
     .evac-row {
       display: flex;
       gap: 12px;
@@ -100,7 +95,6 @@
       justify-content: center;
     }
 
-    /* Mobile: stack vertically */
     @media (max-width: 600px) {
       .evac-row {
         flex-direction: column;
@@ -154,7 +148,6 @@
       }
     }
 
-    /* Chips */
     .evac-zones {
       display: flex;
       flex-wrap: wrap;
@@ -204,137 +197,124 @@
 </head>
 <body>
 
-<!-- ⭐ KEY at TOP CENTER -->
 <div class="legend">
   <div class="legend-title">Map Key</div>
   <div class="legend-items">
-
     <div class="legend-item">
       <span class="legend-icon-road"></span>
       <span>Road closure</span>
     </div>
-
     <div class="legend-item">
       <span class="legend-icon-info">i</span>
       <span>Information</span>
     </div>
-
     <div class="legend-item">
       <span class="legend-icon-warning"></span>
       <span>Special warning</span>
     </div>
-
   </div>
 </div>
 
-<!-- SET + GO boxes -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
 </div>
 
 <script>
-// Read incident
-const params = new URLSearchParams(window.location.search);
-let INCIDENT = params.get('incident') || 'East Canyon';
+  const params = new URLSearchParams(window.location.search);
+  const INCIDENT = params.get('incident') || 'East Canyon';
 
-// Titles
-const STATUS_LABELS = {
-  SET: 'SET - Pre-Evacuation',
-  GO:  'GO - Evacuate Now'
-};
+  const STATUS_LABELS = {
+    SET: 'SET - Pre-Evacuation',
+    GO: 'GO - Evacuate Now'
+  };
 
-// Colors
-const STATUS_COLORS = {
-  SET: '#fff36a',
-  GO:  '#41f56e'
-};
+  const STATUS_COLORS = {
+    SET: '#fff36a',
+    GO: '#41f56e'
+  };
 
-// Notes
-const STATUS_TEXT = {
-  SET: `Voluntary Evacuation;<br>Evacuation orders are likely`,
-  GO: `<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.`
-};
+  const STATUS_TEXT = {
+    SET: 'Voluntary Evacuation;<br>Evacuation orders are likely',
+    GO: '<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.'
+  };
 
-// Query service
-const url =
-  'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+  const url = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+  const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
-// Correct casing for your domain codes
-const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
+  const queryParams = new URLSearchParams({
+    where,
+    outFields: '*',
+    f: 'json',
+    returnGeometry: 'false'
+  });
 
-const queryParams = new URLSearchParams({
-  where,
-  outFields: '*',
-  f: 'json',
-  returnGeometry: 'false'
-});
+  fetch(url + '?' + queryParams.toString())
+    .then(r => r.json())
+    .then(data => {
+      const row = document.getElementById('evacRow');
 
-fetch(url + '?' + queryParams.toString())
-  .then(r => r.json())
-  .then(data => {
-    const row = document.getElementById('evacRow');
-
-    if (!data.features || data.features.length === 0) {
-      row.innerHTML =
-        `<div class="evac-box" style="background:#fff36a;">
-           <div class="evac-title">No data</div>
-           <div class="evac-body">No zones found for <strong>${INCIDENT}</strong>.</div>
-         </div>`;
-      return;
-    }
-
-    // Case-insensitive filter
-    const setFeatures = data.features.filter(
-      f => String(f.attributes.STATUS).toUpperCase() === 'SET'
-    );
-    const goFeatures = data.features.filter(
-      f => String(f.attributes.STATUS).toUpperCase() === 'GO'
-    );
-
-    function buildBox(statusCode, features) {
-      const label = STATUS_LABELS[statusCode];
-      const bg = STATUS_COLORS[statusCode];
-      const note = STATUS_TEXT[statusCode];
-
-      let zonesHTML;
-
-      if (!features || features.length === 0) {
-        zonesHTML =
-          `<div class="evac-zones">
-             <div class="no-zones-chip">No ${statusCode} zones</div>
-           </div>`;
-      } else {
-        const chips = features
-          .map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`)
-          .join('');
-        zonesHTML = `<div class="evac-zones">${chips}</div>`;
+      if (!data.features || data.features.length === 0) {
+        row.innerHTML = `
+          <div class="evac-box" style="background:#fff36a;">
+            <div class="evac-title">No data</div>
+            <div class="evac-body">
+              No zones found for <strong>${INCIDENT}</strong>.
+            </div>
+          </div>`;
+        return;
       }
 
-      return `
-        <div class="evac-box" style="background:${bg};">
-          <div class="evac-title">${label}</div>
-          <div class="evac-body">
-            <div>
-              The following zones are under ${statusCode} status for
-              <strong>${INCIDENT}</strong>.
-            </div>
-            ${zonesHTML}
-            <div class="evac-note">${note}</div>
-          </div>
-        </div>`;
-    }
+      // Trust STATUS = 'Set' / 'Go'
+      const setFeatures = data.features.filter(
+        f => f.attributes.STATUS === 'Set'
+      );
+      const goFeatures = data.features.filter(
+        f => f.attributes.STATUS === 'Go'
+      );
 
-    row.innerHTML =
-      buildBox('SET', setFeatures) +
-      buildBox('GO', goFeatures);
-  })
-  .catch(err => {
-    document.getElementById('evacRow').innerHTML =
-      `<div class="evac-box" style="background:#fff36a;">
-         <div class="evac-title">Error</div>
-         <div class="evac-body">${err}</div>
-       </div>`;
-  });
+      function buildBox(statusCode, features) {
+        const label = STATUS_LABELS[statusCode];
+        const bg = STATUS_COLORS[statusCode];
+        const note = STATUS_TEXT[statusCode];
+
+        let zonesHTML;
+        if (!features || features.length === 0) {
+          zonesHTML = `
+            <div class="evac-zones">
+              <div class="no-zones-chip">No ${statusCode} zones</div>
+            </div>`;
+        } else {
+          const chips = features
+            .map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`)
+            .join('');
+          zonesHTML = `<div class="evac-zones">${chips}</div>`;
+        }
+
+        return `
+          <div class="evac-box" style="background:${bg};">
+            <div class="evac-title">${label}</div>
+            <div class="evac-body">
+              <div>
+                The following zones are under ${statusCode} status for
+                <strong>${INCIDENT}</strong>.
+              </div>
+              ${zonesHTML}
+              <div class="evac-note">${note}</div>
+            </div>
+          </div>`;
+      }
+
+      row.innerHTML =
+        buildBox('SET', setFeatures) +
+        buildBox('GO', goFeatures);
+    })
+    .catch(err => {
+      document.getElementById('evacRow').innerHTML = `
+        <div class="evac-box" style="background:#fff36a;">
+          <div class="evac-title">Error</div>
+          <div class="evac-body">${err}</div>
+        </div>`;
+    });
 </script>
 
 </body>
