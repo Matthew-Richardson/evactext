@@ -13,10 +13,82 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      /* was min-height: 100vh; – removed so it fits the iframe better */
     }
 
-    /* Row holds SET + GO boxes */
+    /* -------- KEY / LEGEND -------- */
+    .legend {
+      max-width: 900px;
+      width: 100%;
+      padding: 12px 8px 4px 8px;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .legend-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .legend-items {
+      display: inline-flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    /* Road closure icon */
+    .legend-icon-road {
+      position: relative;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #d60000;
+      display: inline-block;
+    }
+    .legend-icon-road::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: black;
+      transform: translateY(-50%);
+    }
+
+    /* Info icon */
+    .legend-icon-info {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #0078d4;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Warning icon (diamond) */
+    .legend-icon-warning {
+      width: 16px;
+      height: 16px;
+      background: #f6e05e;
+      transform: rotate(45deg);
+      border: 1px solid #c7b100;
+      box-sizing: border-box;
+      display: inline-block;
+    }
+
+    /* -------- BOX LAYOUT -------- */
     .evac-row {
       display: flex;
       gap: 12px;
@@ -28,11 +100,10 @@
       justify-content: center;
     }
 
-    /* Mobile stacking + tighter layout */
+    /* Mobile: stack vertically */
     @media (max-width: 600px) {
       .evac-row {
         flex-direction: column;
-        max-width: 100%;
         padding: 6px;
         gap: 8px;
       }
@@ -44,7 +115,7 @@
       box-shadow: 0 0 4px rgba(0,0,0,0.3);
       box-sizing: border-box;
       flex: 1;
-      min-width: 280px;
+      min-width: 260px;
       display: flex;
       flex-direction: column;
     }
@@ -52,7 +123,7 @@
     @media (max-width: 600px) {
       .evac-box {
         padding: 10px;
-        min-width: 0; /* let it shrink on narrow screens */
+        min-width: 0;
       }
     }
 
@@ -60,6 +131,13 @@
       font-weight: bold;
       font-size: 18px;
       margin-bottom: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .evac-title {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
     }
 
     .evac-body {
@@ -71,16 +149,12 @@
     }
 
     @media (max-width: 600px) {
-      .evac-title {
-        font-size: 16px;
-        margin-bottom: 6px;
-      }
       .evac-body {
         font-size: 13px;
       }
     }
 
-    /* Zone chips */
+    /* Chips */
     .evac-zones {
       display: flex;
       flex-wrap: wrap;
@@ -102,7 +176,6 @@
       padding: 4px 8px;
       border-radius: 6px;
       white-space: normal;
-      word-wrap: break-word;
       max-width: 100%;
     }
 
@@ -131,6 +204,30 @@
 </head>
 <body>
 
+<!-- ⭐ KEY at TOP CENTER -->
+<div class="legend">
+  <div class="legend-title">Map Key</div>
+  <div class="legend-items">
+
+    <div class="legend-item">
+      <span class="legend-icon-road"></span>
+      <span>Road closure</span>
+    </div>
+
+    <div class="legend-item">
+      <span class="legend-icon-info">i</span>
+      <span>Information</span>
+    </div>
+
+    <div class="legend-item">
+      <span class="legend-icon-warning"></span>
+      <span>Special warning</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- SET + GO boxes -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
 </div>
@@ -162,7 +259,7 @@ const STATUS_TEXT = {
 const url =
   'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
-// Match coded domain values
+// Correct casing for your domain codes
 const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
 const queryParams = new URLSearchParams({
@@ -178,11 +275,11 @@ fetch(url + '?' + queryParams.toString())
     const row = document.getElementById('evacRow');
 
     if (!data.features || data.features.length === 0) {
-      row.innerHTML = `
-        <div class="evac-box" style="background:#fff36a;">
-          <div class="evac-title">No data</div>
-          <div class="evac-body">No zones found for <strong>${INCIDENT}</strong>.</div>
-        </div>`;
+      row.innerHTML =
+        `<div class="evac-box" style="background:#fff36a;">
+           <div class="evac-title">No data</div>
+           <div class="evac-body">No zones found for <strong>${INCIDENT}</strong>.</div>
+         </div>`;
       return;
     }
 
@@ -202,10 +299,10 @@ fetch(url + '?' + queryParams.toString())
       let zonesHTML;
 
       if (!features || features.length === 0) {
-        zonesHTML = `
-          <div class="evac-zones">
-            <div class="no-zones-chip">No ${statusCode} zones</div>
-          </div>`;
+        zonesHTML =
+          `<div class="evac-zones">
+             <div class="no-zones-chip">No ${statusCode} zones</div>
+           </div>`;
       } else {
         const chips = features
           .map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`)
@@ -217,7 +314,10 @@ fetch(url + '?' + queryParams.toString())
         <div class="evac-box" style="background:${bg};">
           <div class="evac-title">${label}</div>
           <div class="evac-body">
-            <div>The following zones are under ${statusCode} status for <strong>${INCIDENT}</strong>.</div>
+            <div>
+              The following zones are under ${statusCode} status for
+              <strong>${INCIDENT}</strong>.
+            </div>
             ${zonesHTML}
             <div class="evac-note">${note}</div>
           </div>
