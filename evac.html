@@ -97,6 +97,26 @@
       line-height: 1;
     }
 
+    /* Incident selector bar */
+    .incident-selector-bar {
+      max-width: 900px;
+      width: 100%;
+      padding: 4px 8px 4px 8px;
+      box-sizing: border-box;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .incident-selector-bar label {
+      font-weight: 600;
+    }
+    .incident-selector-bar select {
+      padding: 4px 6px;
+      font-size: 14px;
+    }
+
     .evac-row {
       display: flex;
       gap: 12px;
@@ -272,6 +292,14 @@
   </div>
 </div>
 
+<!-- INCIDENT DROPDOWN -->
+<div class="incident-selector-bar">
+  <label for="incident-select">Incident:</label>
+  <select id="incident-select">
+    <option>Loading incidents…</option>
+  </select>
+</div>
+
 <!-- SET / GO ZONE BOXES -->
 <div id="evacRow" class="evac-row">
   Loading evacuation information…
@@ -284,7 +312,8 @@
 
 <script>
   const params = new URLSearchParams(window.location.search);
-  var INCIDENT = params.get('incident') || 'East Canyon';
+  // Global incident (will be set based on dropdown / URL)
+  var INCIDENT = params.get('incident') || '';
 
   const STATUS_LABELS = {
     SET: 'SET - Pre-Evacuation',
@@ -301,97 +330,105 @@
     GO: '<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.'
   };
 
-  const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
-  const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
+  const ARCGIS_URL =
+    'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
 
-  const queryParams = new URLSearchParams({
-    where,
-    outFields: '*',
-    f: 'json',
-    returnGeometry: 'false'
-  });
+  // Load SET/GO boxes for a given incident
+  function loadEvacZones(incidentName) {
+    const row = document.getElementById('evacRow');
+    row.innerHTML = 'Loading evacuation information…';
 
-  fetch(ARCGIS_URL + '?' + queryParams.toString())
-    .then(r => r.json())
-    .then(data => {
-      const row = document.getElementById('evacRow');
+    const where = `incident='${incidentName}' AND STATUS IN ('Set','Go')`;
+    const queryParams = new URLSearchParams({
+      where,
+      outFields: '*',
+      f: 'json',
+      returnGeometry: 'false'
+    });
 
-      if (!data.features || data.features.length === 0) {
-        row.innerHTML = `
-          <div class="evac-box" style="background:#fff36a;">
-            <div class="evac-title">No data</div>
-            <div class="evac-body">
-              No zones found for <strong>${INCIDENT}</strong>.
-            </div>
-          </div>`;
-        return;
-      }
-
-      const setFeatures = data.features.filter(
-        f => f.attributes.STATUS === 'Set'
-      );
-      const goFeatures = data.features.filter(
-        f => f.attributes.STATUS === 'Go'
-      );
-
-      function buildBox(statusCode, features) {
-        const label = STATUS_LABELS[statusCode];
-        const bg = STATUS_COLORS[statusCode];
-        const note = STATUS_TEXT[statusCode];
-
-        let zonesHTML;
-        if (!features || features.length === 0) {
-          zonesHTML = `
-            <div class="evac-zones">
-              <div class="no-zones-chip">No ${statusCode} zones</div>
+    fetch(ARCGIS_URL + '?' + queryParams.toString())
+      .then(r => r.json())
+      .then(data => {
+        if (!data.features || data.features.length === 0) {
+          row.innerHTML = `
+            <div class="evac-box" style="background:#fff36a;">
+              <div class="evac-title">No active SET/GO zones</div>
+              <div class="evac-body">
+                There are currently no active SET or GO evacuation alerts
+                for <strong>${incidentName}</strong>. Officials are monitoring
+                conditions and will update this page as needed.
+              </div>
             </div>`;
-        } else {
-          const chips = features
-            .map(f => {
-              const zn = f.attributes.zonename;
-              return `<div class="zone-chip">${zn}</div>`;
-            })
-            .join('');
-          zonesHTML = `<div class="evac-zones">${chips}</div>`;
+          return;
         }
 
-        const extraClass =
-          statusCode === 'GO'
-            ? ' evac-box-go'
-            : statusCode === 'SET'
-            ? ' evac-box-set'
-            : '';
+        const setFeatures = data.features.filter(
+          f => f.attributes.STATUS === 'Set'
+        );
+        const goFeatures = data.features.filter(
+          f => f.attributes.STATUS === 'Go'
+        );
 
-        return `
-          <div class="evac-box${extraClass}" style="background:${bg};">
-            <div class="evac-title">${label}</div>
-            <div class="evac-body">
-              <div>
-                The following zones are under ${statusCode} status for
-                <strong>${INCIDENT}</strong>.
+        function buildBox(statusCode, features) {
+          const label = STATUS_LABELS[statusCode];
+          const bg = STATUS_COLORS[statusCode];
+          const note = STATUS_TEXT[statusCode];
+
+          let zonesHTML;
+          if (!features || features.length === 0) {
+            zonesHTML = `
+              <div class="evac-zones">
+                <div class="no-zones-chip">No ${statusCode} zones</div>
+              </div>`;
+          } else {
+            const chips = features
+              .map(f => {
+                const zn = f.attributes.zonename;
+                return `<div class="zone-chip">${zn}</div>`;
+              })
+              .join('');
+            zonesHTML = `<div class="evac-zones">${chips}</div>`;
+          }
+
+          const extraClass =
+            statusCode === 'GO'
+              ? ' evac-box-go'
+              : statusCode === 'SET'
+              ? ' evac-box-set'
+              : '';
+
+          return `
+            <div class="evac-box${extraClass}" style="background:${bg};">
+              <div class="evac-title">${label}</div>
+              <div class="evac-body">
+                <div>
+                  The following zones are under ${statusCode} status for
+                  <strong>${incidentName}</strong>.
+                </div>
+                ${zonesHTML}
+                <div class="evac-note">${note}</div>
               </div>
-              ${zonesHTML}
-              <div class="evac-note">${note}</div>
-            </div>
-          </div>`;
-      }
+            </div>`;
+        }
 
-      row.innerHTML =
-        buildBox('SET', setFeatures) +
-        buildBox('GO', goFeatures);
-    })
-    .catch(err => {
-      document.getElementById('evacRow').innerHTML = `
-        <div class="evac-box" style="background:#fff36a;">
-          <div class="evac-title">Error</div>
-          <div class="evac-body">${err}</div>
-        </div>`;
-    });
+        row.innerHTML =
+          buildBox('SET', setFeatures) +
+          buildBox('GO', goFeatures);
+      })
+      .catch(err => {
+        row.innerHTML = `
+          <div class="evac-box" style="background:#fff36a;">
+            <div class="evac-title">Error</div>
+            <div class="evac-body">${err}</div>
+          </div>`;
+      });
+  }
 </script>
 
-<!-- LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS -->
+<!-- LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS + DROPDOWN INIT -->
 <script>
-  const STATUS_BASE_URL = "https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec";
+  const STATUS_BASE_URL =
+    "https://script.google.com/macros/s/AKfycbyGmLETNgj4DVhCXUkzTL1Eln-TrlPRZh1hle8isREM7TrKOzkUCga-KKBdkoz1RaTPvw/exec";
 
   function loadIncidentStatus(incidentName) {
     if (!incidentName) {
@@ -422,13 +459,92 @@
       });
   }
 
-  const incidentForPanel =
-    (typeof INCIDENT !== "undefined" && INCIDENT) ||
-    new URLSearchParams(window.location.search).get("incident") ||
-    "East Canyon";
+  // Initialize dropdown + initial loads
+  function initIncidentSelector() {
+    const selectEl = document.getElementById('incident-select');
 
-  loadIncidentStatus(incidentForPanel);
-  window.setEvacIncidentStatus = loadIncidentStatus;
+    // Query distinct incident names that have SET/GO zones
+    const listParams = new URLSearchParams({
+      where: "STATUS IN ('Set','Go') AND incident IS NOT NULL",
+      outFields: 'incident',
+      returnDistinctValues: 'true',
+      f: 'json',
+      returnGeometry: 'false'
+    });
+
+    fetch(
+      'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query'
+      + '?' + listParams.toString()
+    )
+      .then(r => r.json())
+      .then(data => {
+        if (!data.features || data.features.length === 0) {
+          selectEl.innerHTML =
+            '<option value="">No active incidents</option>';
+          INCIDENT = '';
+          document.getElementById('evacRow').innerHTML =
+            '<div class="evac-box" style="background:#fff36a;">' +
+            '<div class="evac-title">No active incidents</div>' +
+            '<div class="evac-body">There are currently no incidents with active SET or GO zones.</div>' +
+            '</div>';
+          document.getElementById('incident-panel').innerHTML =
+            '<div>No incident specified.</div>';
+          return;
+        }
+
+        let incidents = data.features
+          .map(f => String(f.attributes.incident || '').trim())
+          .filter(v => v.length > 0);
+
+        // Deduplicate + sort
+        incidents = Array.from(new Set(incidents)).sort();
+
+        // Build dropdown options
+        selectEl.innerHTML = incidents
+          .map(inc => `<option value="${inc}">${inc}</option>`)
+          .join('');
+
+        // Pick initial incident:
+        let initialIncident = INCIDENT && incidents.includes(INCIDENT)
+          ? INCIDENT
+          : incidents[0];
+
+        INCIDENT = initialIncident;
+        selectEl.value = initialIncident;
+
+        // Update URL (?incident=)
+        const qs = new URLSearchParams(window.location.search);
+        qs.set('incident', initialIncident);
+        const newUrl = window.location.pathname + '?' + qs.toString();
+        history.replaceState(null, '', newUrl);
+
+        // Load evac zones + status for initial incident
+        loadEvacZones(initialIncident);
+        loadIncidentStatus(initialIncident);
+
+        // On change: update everything
+        selectEl.addEventListener('change', () => {
+          const inc = selectEl.value;
+          INCIDENT = inc;
+
+          const qs2 = new URLSearchParams(window.location.search);
+          qs2.set('incident', inc);
+          const url2 = window.location.pathname + '?' + qs2.toString();
+          history.replaceState(null, '', url2);
+
+          loadEvacZones(inc);
+          loadIncidentStatus(inc);
+        });
+      })
+      .catch(err => {
+        console.error('Error loading incident list:', err);
+        selectEl.innerHTML =
+          '<option value="">Error loading incidents</option>';
+      });
+  }
+
+  // Kick everything off
+  initIncidentSelector();
 </script>
 
 </body>
