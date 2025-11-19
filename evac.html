@@ -39,25 +39,29 @@
       white-space: nowrap;
     }
 
+    /* Road closure icon (red circle with white bar) */
     .legend-icon-road {
       position: relative;
       width: 18px;
       height: 18px;
       border-radius: 50%;
-      background: #d60000;
+      background: #d60000; /* Red */
       display: inline-block;
     }
+    
     .legend-icon-road::after {
       content: "";
       position: absolute;
       top: 50%;
-      left: 0;
-      width: 100%;
+      left: 3px;
+      width: 12px;
       height: 4px;
-      background: black;
+      background: white; /* White bar */
       transform: translateY(-50%);
+      border-radius: 2px;
     }
-
+    
+    /* Info icon (unchanged) */
     .legend-icon-info {
       width: 18px;
       height: 18px;
@@ -70,15 +74,30 @@
       justify-content: center;
       align-items: center;
     }
-
+    
+    /* Warning icon (yellow diamond w/ ! inside) */
     .legend-icon-warning {
-      width: 16px;
-      height: 16px;
-      background: #f6e05e;
-      transform: rotate(45deg);
+      width: 18px;
+      height: 18px;
+      background: #f6e05e;  /* Yellow */
+      transform: rotate(45deg); /* Diamond shape */
       border: 1px solid #c7b100;
       box-sizing: border-box;
-      display: inline-block;
+      position: relative;
+    }
+    
+    /* Exclamation mark inside */
+    .legend-icon-warning::after {
+      content: "!";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -60%) rotate(-45deg);  
+      /* Counter Rotate to keep "!" upright */
+      color: #000;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 1;
     }
 
     .evac-row {
@@ -319,4 +338,5 @@ ${base}?incident=SampleIncident
 
 </body>
 </html>
+
 
