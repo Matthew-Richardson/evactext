@@ -8,7 +8,7 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: transparent;
       display: flex;
       flex-direction: column;
@@ -19,12 +19,13 @@
       max-width: 900px;
       width: 100%;
       padding: 12px 8px 4px 8px;
-      font-size: 12px;
+      font-size: 13px;
       text-align: center;
     }
     .legend-title {
-      font-weight: bold;
+      font-weight: 600;
       margin-bottom: 4px;
+      letter-spacing: 0.02em;
     }
     .legend-items {
       display: inline-flex;
@@ -118,14 +119,14 @@
 
     .evac-box {
       padding: 16px;
-      border-radius: 8px;
-      box-shadow: 0 0 4px rgba(0,0,0,0.3);
+      border-radius: 12px;
+      box-shadow: 0 6px 14px rgba(0,0,0,0.2);
       box-sizing: border-box;
       flex: 1;
       min-width: 260px;
       display: flex;
       flex-direction: column;
-      border: 1px solid rgba(0,0,0,0.2);
+      border: 1px solid rgba(0,0,0,0.18);
     }
 
     @media (max-width: 600px) {
@@ -158,9 +159,10 @@
     }
 
     .evac-title {
-      font-weight: bold;
+      font-weight: 700;
       font-size: 18px;
       margin-bottom: 8px;
+      letter-spacing: 0.01em;
     }
 
     @media (max-width: 600px) {
@@ -172,7 +174,7 @@
 
     .evac-body {
       font-size: 14px;
-      line-height: 1.4;
+      line-height: 1.45;
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -200,10 +202,10 @@
 
     .zone-chip,
     .no-zones-chip {
-      font-weight: bold;
-      background: rgba(0,0,0,0.1);
+      font-weight: 600;
+      background: rgba(0,0,0,0.08);
       padding: 4px 8px;
-      border-radius: 6px;
+      border-radius: 999px;
       white-space: normal;
       max-width: 100%;
       cursor: default;
@@ -227,7 +229,7 @@
       margin-top: 12px;
       font-size: 14px;
       font-style: italic;
-      font-weight: bold;
+      font-weight: 600;
     }
 
     @media (max-width: 600px) {
@@ -284,6 +286,7 @@
 
 <script>
   const params = new URLSearchParams(window.location.search);
+  // using var so it’s visible to the second script if needed
   var INCIDENT = params.get('incident') || 'East Canyon';
 
   const STATUS_LABELS = {
@@ -319,9 +322,11 @@
       if (!data.features || data.features.length === 0) {
         row.innerHTML = `
           <div class="evac-box" style="background:#fff36a;">
-            <div class="evac-title">No data</div>
+            <div class="evac-title">No active SET/GO zones</div>
             <div class="evac-body">
-              No zones found for <strong>${INCIDENT}</strong>.
+              There are currently no active SET or GO evacuation alerts
+              for <strong>${INCIDENT}</strong>. Officials are monitoring
+              conditions and will update this page as needed.
             </div>
           </div>`;
         return;
@@ -394,18 +399,25 @@
   const STATUS_BASE_URL = "https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec";
 
   function loadIncidentStatus(incidentName) {
+    const panel = document.getElementById("incident-panel");
+
     if (!incidentName) {
-      document.getElementById("incident-panel").innerHTML =
-        "<div>No incident specified.</div>";
+      panel.innerHTML = "<div>No incident specified.</div>";
       return;
     }
 
-    const url = STATUS_BASE_URL + "?incident=" + encodeURIComponent(incidentName);
+    const url =
+      STATUS_BASE_URL + "?incident=" + encodeURIComponent(incidentName) +
+      "&cb=" + Date.now(); // cachebuster
 
     fetch(url)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) {
+          throw new Error("HTTP " + r.status + " " + r.statusText);
+        }
+        return r.text();
+      })
       .then(html => {
-        const panel = document.getElementById("incident-panel");
         panel.innerHTML = html;
 
         // Add a "Last loaded" timestamp under the card (client-side time)
@@ -417,8 +429,10 @@
       })
       .catch(err => {
         console.error("Error loading incident status:", err);
-        document.getElementById("incident-panel").innerHTML =
-          "<div>Error loading incident status.</div>";
+        panel.innerHTML =
+          "<div>Error loading incident status.<br><small>" +
+          String(err.message || err) +
+          "</small></div>";
       });
   }
 
