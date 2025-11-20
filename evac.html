@@ -39,6 +39,7 @@
       white-space: nowrap;
     }
 
+    /* Road closure icon (red circle w/ white bar) */
     .legend-icon-road {
       position: relative;
       width: 18px;
@@ -51,13 +52,15 @@
       content: "";
       position: absolute;
       top: 50%;
-      left: 0;
-      width: 100%;
+      left: 3px;
+      width: 12px;
       height: 4px;
-      background: black;
+      background: #ffffff;
       transform: translateY(-50%);
+      border-radius: 2px;
     }
 
+    /* Info icon */
     .legend-icon-info {
       width: 18px;
       height: 18px;
@@ -71,14 +74,27 @@
       align-items: center;
     }
 
+    /* Warning icon (yellow diamond with !) */
     .legend-icon-warning {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       background: #f6e05e;
       transform: rotate(45deg);
       border: 1px solid #c7b100;
       box-sizing: border-box;
+      position: relative;
       display: inline-block;
+    }
+    .legend-icon-warning::after {
+      content: "!";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -60%) rotate(-45deg);
+      color: #000;
+      font-weight: bold;
+      font-size: 14px;
+      line-height: 1;
     }
 
     .evac-row {
@@ -109,12 +125,49 @@
       min-width: 260px;
       display: flex;
       flex-direction: column;
+      border: 1px solid rgba(0,0,0,0.2);
+    }
+
+    @media (max-width: 600px) {
+      .evac-box {
+        padding: 10px;
+        min-width: 0;
+      }
+    }
+
+    /* Subtle highlight for SET */
+    .evac-box-set {
+      border: 2px solid rgba(180, 150, 0, 0.9);
+      box-shadow: 0 0 8px rgba(180, 150, 0, 0.4);
+    }
+
+    /* Soft glow + subtle pulse for GO */
+    .evac-box-go {
+      border: 2px solid rgba(0, 120, 0, 0.9);
+      box-shadow: 0 0 12px rgba(0, 120, 0, 0.5);
+      animation: goPulse 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes goPulse {
+      from {
+        box-shadow: 0 0 8px rgba(0, 120, 0, 0.35);
+      }
+      to {
+        box-shadow: 0 0 18px rgba(0, 160, 0, 0.7);
+      }
     }
 
     .evac-title {
       font-weight: bold;
       font-size: 18px;
       margin-bottom: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .evac-title {
+        font-size: 16px;
+        margin-bottom: 6px;
+      }
     }
 
     .evac-body {
@@ -125,11 +178,24 @@
       flex-direction: column;
     }
 
+    @media (max-width: 600px) {
+      .evac-body {
+        font-size: 13px;
+      }
+    }
+
     .evac-zones {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .evac-zones {
+        gap: 4px;
+        margin-top: 6px;
+      }
     }
 
     .zone-chip,
@@ -140,6 +206,21 @@
       border-radius: 6px;
       white-space: normal;
       max-width: 100%;
+      cursor: default;
+    }
+
+    .zone-chip:hover,
+    .no-zones-chip:hover {
+      background: rgba(0,0,0,0.1);
+      text-decoration: none;
+    }
+
+    @media (max-width: 600px) {
+      .zone-chip,
+      .no-zones-chip {
+        padding: 3px 6px;
+        font-size: 12px;
+      }
     }
 
     .evac-note {
@@ -149,38 +230,29 @@
       font-weight: bold;
     }
 
+    @media (max-width: 600px) {
+      .evac-note {
+        margin-top: 8px;
+        font-size: 13px;
+      }
+    }
+
+    /* INCIDENT STATUS PANEL */
     .incident-panel {
       max-width: 900px;
       width: 100%;
       box-sizing: border-box;
       padding: 0 8px 12px 8px;
     }
+
+    .status-timestamp {
+      font-size: 12px;
+      margin-top: 6px;
+      color: #444;
+    }
   </style>
 </head>
 <body>
-
-<!-- ⭐ NEW: Simple “edit your URL” placeholder for ?incident= -->
-<script>
-  const p = new URLSearchParams(window.location.search);
-  const inc = p.get("incident");
-
-  // Detect ?incident= with nothing after it
-  if (inc === "") {
-    const base = window.location.origin + window.location.pathname;
-
-    document.body.innerHTML = `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h3>No incident provided</h3>
-        <p>To view an incident, add its name after <code>?incident=</code> in the URL.</p>
-        <p>Example:</p>
-        <pre style="background:#eee; padding:8px; border-radius:4px;">
-${base}?incident=SampleIncident
-        </pre>
-      </div>
-    `;
-    throw new Error("Stopping scripts — no incident provided");
-  }
-</script>
 
 <div class="legend">
   <div class="legend-title">Map Key</div>
@@ -200,8 +272,12 @@ ${base}?incident=SampleIncident
   </div>
 </div>
 
-<div id="evacRow" class="evac-row">Loading evacuation information…</div>
+<!-- SET / GO ZONE BOXES -->
+<div id="evacRow" class="evac-row">
+  Loading evacuation information…
+</div>
 
+<!-- INCIDENT STATUS / EVAC INFO PANEL FROM GOOGLE SHEET -->
 <div class="incident-panel">
   <div id="incident-panel">Loading incident status…</div>
 </div>
@@ -225,7 +301,7 @@ ${base}?incident=SampleIncident
     GO: '<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.'
   };
 
-  const url = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+  const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
   const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
   const queryParams = new URLSearchParams({
@@ -235,7 +311,7 @@ ${base}?incident=SampleIncident
     returnGeometry: 'false'
   });
 
-  fetch(url + '?' + queryParams.toString())
+  fetch(ARCGIS_URL + '?' + queryParams.toString())
     .then(r => r.json())
     .then(data => {
       const row = document.getElementById('evacRow');
@@ -251,8 +327,12 @@ ${base}?incident=SampleIncident
         return;
       }
 
-      const setFeatures = data.features.filter(f => f.attributes.STATUS === 'Set');
-      const goFeatures = data.features.filter(f => f.attributes.STATUS === 'Go');
+      const setFeatures = data.features.filter(
+        f => f.attributes.STATUS === 'Set'
+      );
+      const goFeatures = data.features.filter(
+        f => f.attributes.STATUS === 'Go'
+      );
 
       function buildBox(statusCode, features) {
         const label = STATUS_LABELS[statusCode];
@@ -261,17 +341,35 @@ ${base}?incident=SampleIncident
 
         let zonesHTML;
         if (!features || features.length === 0) {
-          zonesHTML = `<div class="evac-zones"><div class="no-zones-chip">No ${statusCode} zones</div></div>`;
+          zonesHTML = `
+            <div class="evac-zones">
+              <div class="no-zones-chip">No ${statusCode} zones</div>
+            </div>`;
         } else {
-          const chips = features.map(f => `<div class="zone-chip">${f.attributes.zonename}</div>`).join('');
+          const chips = features
+            .map(f => {
+              const zn = f.attributes.zonename;
+              return `<div class="zone-chip">${zn}</div>`;
+            })
+            .join('');
           zonesHTML = `<div class="evac-zones">${chips}</div>`;
         }
 
+        const extraClass =
+          statusCode === 'GO'
+            ? ' evac-box-go'
+            : statusCode === 'SET'
+            ? ' evac-box-set'
+            : '';
+
         return `
-          <div class="evac-box" style="background:${bg};">
+          <div class="evac-box${extraClass}" style="background:${bg};">
             <div class="evac-title">${label}</div>
             <div class="evac-body">
-              <div>The following zones are under ${statusCode} status for <strong>${INCIDENT}</strong>.</div>
+              <div>
+                The following zones are under ${statusCode} status for
+                <strong>${INCIDENT}</strong>.
+              </div>
               ${zonesHTML}
               <div class="evac-note">${note}</div>
             </div>
@@ -281,13 +379,27 @@ ${base}?incident=SampleIncident
       row.innerHTML =
         buildBox('SET', setFeatures) +
         buildBox('GO', goFeatures);
+    })
+    .catch(err => {
+      document.getElementById('evacRow').innerHTML = `
+        <div class="evac-box" style="background:#fff36a;">
+          <div class="evac-title">Error</div>
+          <div class="evac-body">${err}</div>
+        </div>`;
     });
 </script>
 
+<!-- LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS -->
 <script>
   const STATUS_BASE_URL = "https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec";
 
   function loadIncidentStatus(incidentName) {
+    if (!incidentName) {
+      document.getElementById("incident-panel").innerHTML =
+        "<div>No incident specified.</div>";
+      return;
+    }
+
     const url = STATUS_BASE_URL + "?incident=" + encodeURIComponent(incidentName);
 
     fetch(url)
@@ -296,25 +408,27 @@ ${base}?incident=SampleIncident
         const panel = document.getElementById("incident-panel");
         panel.innerHTML = html;
 
-        const link = panel.querySelector("a[href]");
-        if (link) {
-          link.textContent = "View the latest status updates for this incident";
-
-          const strong = link.parentElement.querySelector("strong");
-          if (strong) strong.remove();
-
-          const prev = link.previousSibling;
-          if (prev && prev.nodeType === 3) prev.textContent = "";
-        }
+        // Add a "Last loaded" timestamp under the card (client-side time)
+        const stamp = document.createElement("div");
+        stamp.className = "status-timestamp";
+        const now = new Date();
+        stamp.textContent = "Last loaded: " + now.toLocaleString();
+        panel.appendChild(stamp);
       })
       .catch(err => {
+        console.error("Error loading incident status:", err);
         document.getElementById("incident-panel").innerHTML =
           "<div>Error loading incident status.</div>";
       });
   }
 
-  const incidentForPanel = INCIDENT || "East Canyon";
+  const incidentForPanel =
+    (typeof INCIDENT !== "undefined" && INCIDENT) ||
+    new URLSearchParams(window.location.search).get("incident") ||
+    "East Canyon";
+
   loadIncidentStatus(incidentForPanel);
+  window.setEvacIncidentStatus = loadIncidentStatus;
 </script>
 
 </body>
