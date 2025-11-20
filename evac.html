@@ -249,6 +249,21 @@
       font-size: 12px;
       margin-top: 6px;
       color: #444;
+
+    .status-timestamp {
+      font-size: 12px;
+      margin-top: 6px;
+      color: #444;
+      text-align: center;  /* centers the whole line */
+      width: 100%;
+    }
+
+    .source-label {
+      font-style: italic;
+      opacity: 0.85;
+      white-space: nowrap;
+    }
+
     }
   </style>
 </head>
@@ -465,8 +480,13 @@
         const stamp = document.createElement("div");
         stamp.className = "status-timestamp";
         const now = new Date();
-        stamp.textContent = "Last loaded: " + now.toLocaleString();
+        stamp.innerHTML = `
+          Last loaded: ${now.toLocaleString()}
+          &nbsp;•&nbsp;
+          <span class="source-label">Source: La Plata County Office of Emergency Management</span>
+        `;
         panel.appendChild(stamp);
+;
       })
       .catch(err => {
         console.error("Error loading incident status:", err);
@@ -481,3 +501,4 @@
 
 </body>
 </html>
+
