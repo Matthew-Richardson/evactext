@@ -283,8 +283,10 @@
 </div>
 
 <script>
+  // Read incident from URL (no default)
   const params = new URLSearchParams(window.location.search);
-  var INCIDENT = params.get('incident') || 'East Canyon';
+  const rawIncident = params.get('incident');
+  var INCIDENT = rawIncident && rawIncident.trim() ? rawIncident.trim() : null;
 
   const STATUS_LABELS = {
     SET: 'SET - Pre-Evacuation',
@@ -302,91 +304,143 @@
   };
 
   const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
-  const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
-  const queryParams = new URLSearchParams({
-    where,
-    outFields: '*',
-    f: 'json',
-    returnGeometry: 'false'
-  });
+  function showHelp() {
+    const helpEvacHtml = `
+      <div class="evac-box" style="background:#f3f4f6;">
+        <div class="evac-title">How to use this page</div>
+        <div class="evac-body">
+          <div>
+            This evacuation information page requires an <strong>incident name</strong> in the URL.
+          </div>
+          <div style="margin-top:8px;">
+            Use this format:
+            <br>
+            <code>https://matthew-richardson.github.io/evactext/evac.html?incident=YourIncidentName</code>
+          </div>
+          <div style="margin-top:8px;">
+            Example:
+            <br>
+            <code>https://matthew-richardson.github.io/evactext/evac.html?incident=East%20Canyon</code>
+          </div>
+          <div style="margin-top:8px;">
+            The incident name must match the name used in the map and Google Sheet.
+          </div>
+        </div>
+      </div>
+    `;
 
-  fetch(ARCGIS_URL + '?' + queryParams.toString())
-    .then(r => r.json())
-    .then(data => {
-      const row = document.getElementById('evacRow');
+    const helpStatusHtml = `
+      <div class="evac-box" style="background:#f3f4f6;">
+        <div class="evac-title">Incident status</div>
+        <div class="evac-body">
+          <div>No incident was specified.</div>
+          <div style="margin-top:8px;">
+            Append <code>?incident=YourIncidentName</code> to the URL
+            (for example: <code>?incident=East%20Canyon</code>).
+          </div>
+        </div>
+      </div>
+    `;
 
-      if (!data.features || data.features.length === 0) {
-        row.innerHTML = `
-          <div class="evac-box" style="background:#fff36a;">
-            <div class="evac-title">No data</div>
-            <div class="evac-body">
-              No zones found for <strong>${INCIDENT}</strong>.
-            </div>
-          </div>`;
-        return;
-      }
+    const row = document.getElementById('evacRow');
+    if (row) row.innerHTML = helpEvacHtml;
 
-      const setFeatures = data.features.filter(
-        f => f.attributes.STATUS === 'Set'
-      );
-      const goFeatures = data.features.filter(
-        f => f.attributes.STATUS === 'Go'
-      );
+    const panel = document.getElementById('incident-panel');
+    if (panel) panel.innerHTML = helpStatusHtml;
+  }
 
-      function buildBox(statusCode, features) {
-        const label = STATUS_LABELS[statusCode];
-        const bg = STATUS_COLORS[statusCode];
-        const note = STATUS_TEXT[statusCode];
+  // If no incident, show help in BOTH sections and stop
+  if (!INCIDENT) {
+    showHelp();
+  } else {
+    // Normal evac zone query
+    const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
 
-        let zonesHTML;
-        if (!features || features.length === 0) {
-          zonesHTML = `
-            <div class="evac-zones">
-              <div class="no-zones-chip">No ${statusCode} zones</div>
+    const queryParams = new URLSearchParams({
+      where,
+      outFields: '*',
+      f: 'json',
+      returnGeometry: 'false'
+    });
+
+    fetch(ARCGIS_URL + '?' + queryParams.toString())
+      .then(r => r.json())
+      .then(data => {
+        const row = document.getElementById('evacRow');
+
+        if (!data.features || data.features.length === 0) {
+          row.innerHTML = `
+            <div class="evac-box" style="background:#fff36a;">
+              <div class="evac-title">No data</div>
+              <div class="evac-body">
+                No zones found for <strong>${INCIDENT}</strong>.
+              </div>
             </div>`;
-        } else {
-          const chips = features
-            .map(f => {
-              const zn = f.attributes.zonename;
-              return `<div class="zone-chip">${zn}</div>`;
-            })
-            .join('');
-          zonesHTML = `<div class="evac-zones">${chips}</div>`;
+          return;
         }
 
-        const extraClass =
-          statusCode === 'GO'
-            ? ' evac-box-go'
-            : statusCode === 'SET'
-            ? ' evac-box-set'
-            : '';
+        const setFeatures = data.features.filter(
+          f => f.attributes.STATUS === 'Set'
+        );
+        const goFeatures = data.features.filter(
+          f => f.attributes.STATUS === 'Go'
+        );
 
-        return `
-          <div class="evac-box${extraClass}" style="background:${bg};">
-            <div class="evac-title">${label}</div>
-            <div class="evac-body">
-              <div>
-                The following zones are under ${statusCode} status for
-                <strong>${INCIDENT}</strong>.
+        function buildBox(statusCode, features) {
+          const label = STATUS_LABELS[statusCode];
+          const bg = STATUS_COLORS[statusCode];
+          const note = STATUS_TEXT[statusCode];
+
+          let zonesHTML;
+          if (!features || features.length === 0) {
+            zonesHTML = `
+              <div class="evac-zones">
+                <div class="no-zones-chip">No ${statusCode} zones</div>
+              </div>`;
+          } else {
+            const chips = features
+              .map(f => {
+                const zn = f.attributes.zonename;
+                return `<div class="zone-chip">${zn}</div>`;
+              })
+              .join('');
+            zonesHTML = `<div class="evac-zones">${chips}</div>`;
+          }
+
+          const extraClass =
+            statusCode === 'GO'
+              ? ' evac-box-go'
+              : statusCode === 'SET'
+              ? ' evac-box-set'
+              : '';
+
+          return `
+            <div class="evac-box${extraClass}" style="background:${bg};">
+              <div class="evac-title">${label}</div>
+              <div class="evac-body">
+                <div>
+                  The following zones are under ${statusCode} status for
+                  <strong>${INCIDENT}</strong>.
+                </div>
+                ${zonesHTML}
+                <div class="evac-note">${note}</div>
               </div>
-              ${zonesHTML}
-              <div class="evac-note">${note}</div>
-            </div>
-          </div>`;
-      }
+            </div>`;
+        }
 
-      row.innerHTML =
-        buildBox('SET', setFeatures) +
-        buildBox('GO', goFeatures);
-    })
-    .catch(err => {
-      document.getElementById('evacRow').innerHTML = `
-        <div class="evac-box" style="background:#fff36a;">
-          <div class="evac-title">Error</div>
-          <div class="evac-body">${err}</div>
-        </div>`;
-    });
+        row.innerHTML =
+          buildBox('SET', setFeatures) +
+          buildBox('GO', goFeatures);
+      })
+      .catch(err => {
+        document.getElementById('evacRow').innerHTML = `
+          <div class="evac-box" style="background:#fff36a;">
+            <div class="evac-title">Error</div>
+            <div class="evac-body">${err}</div>
+          </div>`;
+      });
+  }
 </script>
 
 <!-- LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS -->
@@ -395,8 +449,7 @@
 
   function loadIncidentStatus(incidentName) {
     if (!incidentName) {
-      document.getElementById("incident-panel").innerHTML =
-        "<div>No incident specified.</div>";
+      // If HTML already showed help, do nothing here
       return;
     }
 
@@ -422,13 +475,8 @@
       });
   }
 
-  const incidentForPanel =
-    (typeof INCIDENT !== "undefined" && INCIDENT) ||
-    new URLSearchParams(window.location.search).get("incident") ||
-    "East Canyon";
-
-  loadIncidentStatus(incidentForPanel);
-  window.setEvacIncidentStatus = loadIncidentStatus;
+  // Use the INCIDENT from the first script
+  loadIncidentStatus(INCIDENT);
 </script>
 
 </body>
