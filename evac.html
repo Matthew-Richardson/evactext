@@ -251,17 +251,29 @@
       color: #444;
 
     .status-timestamp {
-      font-size: 12px;
+      font-size: 11px;
       margin-top: 6px;
       color: #444;
-      text-align: center;  /* centers the whole line */
-      width: 100%;
+      opacity: 0.75;
+      text-align: center;
     }
 
     .source-label {
       font-style: italic;
       opacity: 0.85;
       white-space: nowrap;
+    }
+
+      /* Accessible link styling */
+    .incident-panel a {
+      color: #0b4da2;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+    
+    .incident-panel a:hover {
+      text-decoration: underline;
+      opacity: 0.85;
     }
 
     }
@@ -501,4 +513,5 @@
 
 </body>
 </html>
+
 
