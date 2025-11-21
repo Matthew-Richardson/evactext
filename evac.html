@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Evacuation Info</title>
 
   <style>
@@ -246,11 +247,6 @@
     }
 
     .status-timestamp {
-      font-size: 12px;
-      margin-top: 6px;
-      color: #444;
-
-    .status-timestamp {
       font-size: 11px;
       margin-top: 6px;
       color: #444;
@@ -264,7 +260,7 @@
       white-space: nowrap;
     }
 
-      /* Accessible link styling */
+    /* Accessible link styling */
     .incident-panel a {
       color: #0b4da2;
       text-decoration: underline;
@@ -274,8 +270,6 @@
     .incident-panel a:hover {
       text-decoration: underline;
       opacity: 0.85;
-    }
-
     }
   </style>
 </head>
@@ -310,11 +304,7 @@
 </div>
 
 <script>
-  // Read incident from URL (no default)
-  const params = new URLSearchParams(window.location.search);
-  const rawIncident = params.get('incident');
-  var INCIDENT = rawIncident && rawIncident.trim() ? rawIncident.trim() : null;
-
+  // Constants
   const STATUS_LABELS = {
     SET: 'SET - Pre-Evacuation',
     GO: 'GO - Evacuate Now'
@@ -330,8 +320,29 @@
     GO: '<strong>LEAVE NOW.</strong> Immediate threat to life.<br>This area is closed to public access.'
   };
 
-  const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+  const STATUS_VALUES = {
+    SET: 'Set',
+    GO: 'Go'
+  };
 
+  const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
+  const STATUS_BASE_URL = 'https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec';
+
+  // Get incident from URL parameters
+  const params = new URLSearchParams(window.location.search);
+  const rawIncident = params.get('incident');
+  const INCIDENT = rawIncident && rawIncident.trim() ? rawIncident.trim() : null;
+
+  /**
+   * Escapes special characters in a string for use in SQL-like queries
+   */
+  function escapeForQuery(str) {
+    return str.replace(/'/g, "''");
+  }
+
+  /**
+   * Shows help message when no incident is specified
+   */
   function showHelp() {
     const helpEvacHtml = `
       <div class="evac-box" style="background:#f3f4f6;">
@@ -377,12 +388,73 @@
     if (panel) panel.innerHTML = helpStatusHtml;
   }
 
-  // If no incident, show help in BOTH sections and stop
-  if (!INCIDENT) {
-    showHelp();
-  } else {
-    // Normal evac zone query
-    const where = `incident='${INCIDENT}' AND STATUS IN ('Set','Go')`;
+  /**
+   * Builds an evacuation status box for SET or GO zones
+   */
+  function buildBox(statusCode, features) {
+    const label = STATUS_LABELS[statusCode];
+    const bg = STATUS_COLORS[statusCode];
+    const note = STATUS_TEXT[statusCode];
+
+    let zonesHTML;
+    if (!features || features.length === 0) {
+      zonesHTML = `
+        <div class="evac-zones">
+          <div class="no-zones-chip">No ${statusCode} zones</div>
+        </div>`;
+    } else {
+      const chips = features
+        .map(f => {
+          const zn = f.attributes.zonename;
+          return `<div class="zone-chip">${zn}</div>`;
+        })
+        .join('');
+      zonesHTML = `<div class="evac-zones">${chips}</div>`;
+    }
+
+    const extraClass =
+      statusCode === 'GO'
+        ? ' evac-box-go'
+        : statusCode === 'SET'
+        ? ' evac-box-set'
+        : '';
+
+    return `
+      <div class="evac-box${extraClass}" style="background:${bg};">
+        <div class="evac-title">${label}</div>
+        <div class="evac-body">
+          <div>
+            The following zones are under ${statusCode} status for
+            <strong>${INCIDENT}</strong>.
+          </div>
+          ${zonesHTML}
+          <div class="evac-note">${note}</div>
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Displays an error message in the evacuation row
+   */
+  function showError(message) {
+    document.getElementById('evacRow').innerHTML = `
+      <div class="evac-box" style="background:#fff36a;">
+        <div class="evac-title">Error</div>
+        <div class="evac-body">${message}</div>
+      </div>`;
+  }
+
+  /**
+   * Loads evacuation zone data from ArcGIS
+   */
+  function loadEvacuationZones() {
+    if (!INCIDENT) {
+      showHelp();
+      return;
+    }
+
+    const escapedIncident = escapeForQuery(INCIDENT);
+    const where = `incident='${escapedIncident}' AND STATUS IN ('${STATUS_VALUES.SET}','${STATUS_VALUES.GO}')`;
 
     const queryParams = new URLSearchParams({
       where,
@@ -392,7 +464,12 @@
     });
 
     fetch(ARCGIS_URL + '?' + queryParams.toString())
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) {
+          throw new Error(`HTTP error! status: ${r.status}`);
+        }
+        return r.json();
+      })
       .then(data => {
         const row = document.getElementById('evacRow');
 
@@ -408,89 +485,46 @@
         }
 
         const setFeatures = data.features.filter(
-          f => f.attributes.STATUS === 'Set'
+          f => f.attributes.STATUS === STATUS_VALUES.SET
         );
         const goFeatures = data.features.filter(
-          f => f.attributes.STATUS === 'Go'
+          f => f.attributes.STATUS === STATUS_VALUES.GO
         );
-
-        function buildBox(statusCode, features) {
-          const label = STATUS_LABELS[statusCode];
-          const bg = STATUS_COLORS[statusCode];
-          const note = STATUS_TEXT[statusCode];
-
-          let zonesHTML;
-          if (!features || features.length === 0) {
-            zonesHTML = `
-              <div class="evac-zones">
-                <div class="no-zones-chip">No ${statusCode} zones</div>
-              </div>`;
-          } else {
-            const chips = features
-              .map(f => {
-                const zn = f.attributes.zonename;
-                return `<div class="zone-chip">${zn}</div>`;
-              })
-              .join('');
-            zonesHTML = `<div class="evac-zones">${chips}</div>`;
-          }
-
-          const extraClass =
-            statusCode === 'GO'
-              ? ' evac-box-go'
-              : statusCode === 'SET'
-              ? ' evac-box-set'
-              : '';
-
-          return `
-            <div class="evac-box${extraClass}" style="background:${bg};">
-              <div class="evac-title">${label}</div>
-              <div class="evac-body">
-                <div>
-                  The following zones are under ${statusCode} status for
-                  <strong>${INCIDENT}</strong>.
-                </div>
-                ${zonesHTML}
-                <div class="evac-note">${note}</div>
-              </div>
-            </div>`;
-        }
 
         row.innerHTML =
           buildBox('SET', setFeatures) +
           buildBox('GO', goFeatures);
       })
       .catch(err => {
-        document.getElementById('evacRow').innerHTML = `
-          <div class="evac-box" style="background:#fff36a;">
-            <div class="evac-title">Error</div>
-            <div class="evac-body">${err}</div>
-          </div>`;
+        console.error('Error loading evacuation zones:', err);
+        showError(`Failed to load evacuation data: ${err.message}`);
       });
   }
-</script>
 
-<!-- LOAD INCIDENT STATUS / EVAC INFO FROM GOOGLE SHEETS -->
-<script>
-  const STATUS_BASE_URL = "https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec";
-
+  /**
+   * Loads incident status information from Google Sheets
+   */
   function loadIncidentStatus(incidentName) {
     if (!incidentName) {
-      // If HTML already showed help, do nothing here
       return;
     }
 
-    const url = STATUS_BASE_URL + "?incident=" + encodeURIComponent(incidentName);
+    const url = STATUS_BASE_URL + '?incident=' + encodeURIComponent(incidentName);
 
     fetch(url)
-      .then(r => r.text())
+      .then(r => {
+        if (!r.ok) {
+          throw new Error(`HTTP error! status: ${r.status}`);
+        }
+        return r.text();
+      })
       .then(html => {
-        const panel = document.getElementById("incident-panel");
+        const panel = document.getElementById('incident-panel');
         panel.innerHTML = html;
 
         // Add a "Last loaded" timestamp under the card (client-side time)
-        const stamp = document.createElement("div");
-        stamp.className = "status-timestamp";
+        const stamp = document.createElement('div');
+        stamp.className = 'status-timestamp';
         const now = new Date();
         stamp.innerHTML = `
           Last loaded: ${now.toLocaleString()}
@@ -498,20 +532,18 @@
           <span class="source-label">Source: La Plata County Office of Emergency Management</span>
         `;
         panel.appendChild(stamp);
-;
       })
       .catch(err => {
-        console.error("Error loading incident status:", err);
-        document.getElementById("incident-panel").innerHTML =
-          "<div>Error loading incident status.</div>";
+        console.error('Error loading incident status:', err);
+        document.getElementById('incident-panel').innerHTML =
+          '<div>Error loading incident status.</div>';
       });
   }
 
-  // Use the INCIDENT from the first script
+  // Initialize the page
+  loadEvacuationZones();
   loadIncidentStatus(INCIDENT);
 </script>
 
 </body>
 </html>
-
-
