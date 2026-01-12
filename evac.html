@@ -326,7 +326,15 @@
   };
 
   const ARCGIS_URL = 'https://services2.arcgis.com/ilLrLpXfElYxSy9y/ArcGIS/rest/services/LPC_Evac_Zones_View/FeatureServer/0/query';
-  const STATUS_BASE_URL = 'https://script.google.com/macros/s/AKfycbxOFlSc6xXHqERr7n9VQbfnXnPGRqsvbgUs5lx4y6cy9YfnYSGFkLk5nSut66ecoRUwtA/exec';
+  
+  // TODO: Replace with live URL once Power Automate flow is working
+  // const STATUS_BASE_URL = 'https://yourdomain.com/data/incidents.json';
+
+  // ========== HARDCODED INCIDENT DATA (for development) ==========
+  const INCIDENT_DATA = [
+    {"name":"Other Mesa Fire Test","statusLink":"lpcgov.org","checkIn":"Durango High School","checkInAddr":"2390 Main Ave, Durango, CO 81301","shelters":"Durango High School","sheltersAddr":"2390 Main Ave, Durango, CO 81301","road":"CR 501","smallAnimals":"Humane Society","smallAnimalsAddr":"123","largeAnimals":"Humane Society","largeAnimalsAddr":"123"},
+    {"name":"Another Fire Test","statusLink":"lpcgov.org","checkIn":"Durango High School","checkInAddr":"2390 Main Ave, Durango, CO 81301","shelters":"Durango High School","sheltersAddr":"2390 Main Ave, Durango, CO 81301","road":"CR 501\nCR 502\nCR 503","smallAnimals":"Humane Society","smallAnimalsAddr":"123","largeAnimals":"Humane Society","largeAnimalsAddr":"123"}
+  ];
 
   // Get incident from URL parameters
   const params = new URLSearchParams(window.location.search);
@@ -502,42 +510,87 @@
   }
 
   /**
-   * Loads incident status information from Google Sheets
+   * Builds HTML for a paired field (name + address) that may have multiple newline-separated values
+   */
+  function buildPairedField(label, names, addresses) {
+    if (!names || !names.trim()) return '';
+    
+    const nameList = names.split('\n').map(s => s.trim()).filter(Boolean);
+    const addrList = addresses ? addresses.split('\n').map(s => s.trim()) : [];
+    
+    const items = nameList.map((name, i) => {
+      const addr = addrList[i] || '';
+      return addr ? `<div><strong>${name}</strong><br><span style="opacity:0.85">${addr}</span></div>` : `<div><strong>${name}</strong></div>`;
+    }).join('');
+    
+    return `<div style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:4px">${label}</div>${items}</div>`;
+  }
+
+  /**
+   * Builds HTML for a simple field that may have multiple newline-separated values
+   */
+  function buildListField(label, values) {
+    if (!values || !values.trim()) return '';
+    
+    const list = values.split('\n').map(s => s.trim()).filter(Boolean);
+    const items = list.length > 1 
+      ? '<ul style="margin:4px 0 0 20px;padding:0">' + list.map(v => `<li>${v}</li>`).join('') + '</ul>'
+      : `<div>${list[0]}</div>`;
+    
+    return `<div style="margin-bottom:12px"><div style="font-weight:600;margin-bottom:4px">${label}</div>${items}</div>`;
+  }
+
+  /**
+   * Loads incident status information from JSON data
    */
   function loadIncidentStatus(incidentName) {
-    if (!incidentName) {
-      return;
+    if (!incidentName) return;
+
+    const panel = document.getElementById('incident-panel');
+
+    try {
+      // TODO: When Power Automate is ready, fetch from URL instead:
+      // fetch(STATUS_BASE_URL)
+      //   .then(r => r.json())
+      //   .then(incidents => { ... })
+
+      const incidents = INCIDENT_DATA;
+
+      // Find matching incident (case-insensitive)
+      const data = incidents.find(i => i.name.toLowerCase() === incidentName.toLowerCase());
+
+      if (!data) {
+        panel.innerHTML = '<div class="evac-box" style="background:#f3f4f6"><div class="evac-title">No Status Available</div><div class="evac-body">No status information found for this incident.</div></div>';
+        return;
+      }
+
+      // Build HTML from JSON fields
+      const html = `
+        <div class="evac-box" style="background:#f3f4f6">
+          <div class="evac-title">Incident Resources</div>
+          <div class="evac-body">
+            ${buildPairedField('Check-In Location', data.checkIn, data.checkInAddr)}
+            ${buildPairedField('Shelter', data.shelters, data.sheltersAddr)}
+            ${buildListField('Road Closures', data.road)}
+            ${buildPairedField('Small Animals', data.smallAnimals, data.smallAnimalsAddr)}
+            ${buildPairedField('Large Animals', data.largeAnimals, data.largeAnimalsAddr)}
+            ${data.statusLink ? `<div style="margin-top:8px"><a href="https://${data.statusLink}" target="_blank" rel="noopener">More information →</a></div>` : ''}
+          </div>
+        </div>
+      `;
+
+      panel.innerHTML = html;
+
+      // Add timestamp
+      const stamp = document.createElement('div');
+      stamp.className = 'status-timestamp';
+      stamp.innerHTML = `Last loaded: ${new Date().toLocaleString()} &nbsp;•&nbsp; <span class="source-label">Source: La Plata County Office of Emergency Management</span>`;
+      panel.appendChild(stamp);
+
+    } catch (err) {
+      console.error('Error loading incident status:', err);
+      panel.innerHTML = '<div>Error loading incident status.</div>';
     }
-
-    const url = STATUS_BASE_URL + '?incident=' + encodeURIComponent(incidentName);
-
-    fetch(url)
-      .then(r => {
-        if (!r.ok) {
-          throw new Error(`HTTP error! status: ${r.status}`);
-        }
-        return r.text();
-      })
-      .then(html => {
-        const panel = document.getElementById('incident-panel');
-        panel.innerHTML = html;
-
-        // Add a "Last loaded" timestamp under the card (client-side time)
-        const stamp = document.createElement('div');
-        stamp.className = 'status-timestamp';
-        const now = new Date();
-        stamp.innerHTML = `
-          Last loaded: ${now.toLocaleString()}
-          &nbsp;•&nbsp;
-          <span class="source-label">Source: La Plata County Office of Emergency Management</span>
-        `;
-        panel.appendChild(stamp);
-      })
-      .catch(err => {
-        console.error('Error loading incident status:', err);
-        document.getElementById('incident-panel').innerHTML =
-          '<div>Error loading incident status.</div>';
-      });
   }
 
   // Initialize the page
