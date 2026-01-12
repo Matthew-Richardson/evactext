@@ -556,8 +556,14 @@
 
       const incidents = INCIDENT_DATA;
 
+      // Debug logging
+      console.log('Looking for incident:', incidentName);
+      console.log('Available incidents:', incidents.map(i => i.name));
+
       // Find matching incident (case-insensitive)
       const data = incidents.find(i => i.name.toLowerCase() === incidentName.toLowerCase());
+
+      console.log('Found match:', data ? data.name : 'none');
 
       if (!data) {
         panel.innerHTML = '<div class="evac-box" style="background:#f3f4f6"><div class="evac-title">No Status Available</div><div class="evac-body">No status information found for this incident.</div></div>';
