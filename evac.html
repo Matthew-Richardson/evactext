@@ -304,6 +304,8 @@
 </div>
 
 <script>
+  console.log('=== EVAC SCRIPT START ===');
+  
   // Constants
   const STATUS_LABELS = {
     SET: 'SET - Pre-Evacuation',
@@ -340,6 +342,8 @@
   const params = new URLSearchParams(window.location.search);
   const rawIncident = params.get('incident');
   const INCIDENT = rawIncident && rawIncident.trim() ? rawIncident.trim() : null;
+  
+  console.log('Script loaded, INCIDENT:', INCIDENT);
 
   /**
    * Escapes special characters in a string for use in SQL-like queries
@@ -544,6 +548,7 @@
    * Loads incident status information from JSON data
    */
   function loadIncidentStatus(incidentName) {
+    console.log('loadIncidentStatus called with:', incidentName);
     if (!incidentName) return;
 
     const panel = document.getElementById('incident-panel');
